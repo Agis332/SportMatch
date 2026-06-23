@@ -244,6 +244,7 @@ export default function SettingsScreen() {
         <Divider colors={colors} />
         <SettingsRow
           icon={Bell} label={t.settings.rows.notifications}
+          onPress={() => router.push('/notifications')}
           iconColor="#F59E0B" rowIconBg={isDarkMode ? '#451A03' : '#FFFBEB'}
           colors={colors} />
       </Section>
