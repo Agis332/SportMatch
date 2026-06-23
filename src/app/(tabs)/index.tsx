@@ -22,13 +22,13 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useLanguage } from '@/context/LanguageContext';
+import { CITIES, useLocation } from '@/context/LocationContext';
 import { useTheme } from '@/context/ThemeContext';
 import { AVATAR_COLORS, SPORT_EMOJI, TRAINERS, avatarColor, type Trainer } from '@/data/trainers';
 import { toggleFavorite, useFavoriteIds } from '@/store/favorites';
 
 const BLUE = '#208AEF';
 
-const CITIES = ['Vilnius', 'Kaunas', 'Klaipėda', 'Šiauliai', 'Panevėžys'];
 
 const SPORTS = [
   { label: 'All', emoji: '' },
@@ -160,7 +160,7 @@ export default function HomeScreen() {
   const { isDarkMode } = useTheme();
   const { t } = useLanguage();
 
-  const [selectedCity, setSelectedCity] = useState('Vilnius');
+  const { selectedCity, setSelectedCity } = useLocation();
   const [sessionType, setSessionType] = useState<'individual' | 'group'>('individual');
   const [selectedSport, setSelectedSport] = useState('All');
   const [cityModalVisible, setCityModalVisible] = useState(false);

@@ -21,14 +21,18 @@ import {
 import { useState } from 'react';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { ContactModal } from '@/components/contact-modal';
 import { type Language, useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
 import {
   Image,
+  Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -111,18 +115,20 @@ function SettingsRow({
 }
 
 function ToggleRow({
-  icon: Icon, label, value, onChange, colors,
+  icon: Icon, label, value, onChange, colors, iconColor, rowIconBg,
 }: {
   icon: IconComponent;
   label: string;
   value: boolean;
   onChange: (v: boolean) => void;
   colors: Theme;
+  iconColor?: string;
+  rowIconBg?: string;
 }) {
   return (
     <View style={styles.row}>
-      <View style={[styles.rowIcon, { backgroundColor: colors.iconBg }]}>
-        <Icon size={17} color={BLUE} strokeWidth={2} />
+      <View style={[styles.rowIcon, { backgroundColor: rowIconBg ?? colors.iconBg }]}>
+        <Icon size={17} color={iconColor ?? BLUE} strokeWidth={2} />
       </View>
       <Text style={[styles.rowLabel, { color: colors.text }]}>{label}</Text>
       <Switch
@@ -157,6 +163,198 @@ function Divider({ colors }: { colors: Theme }) {
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
+// ─── Rate app modal ───────────────────────────────────────────────────────────
+
+function RateModal({ isDarkMode, onClose }: { isDarkMode: boolean; onClose: () => void }) {
+  const [rating, setRating] = useState(0);
+  const [feedback, setFeedback] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+
+  const sheetBg     = isDarkMode ? '#1F2937' : '#FFFFFF';
+  const textPrimary = isDarkMode ? '#FFFFFF' : '#111827';
+  const textSub     = isDarkMode ? '#9CA3AF' : '#6B7280';
+  const inputBg     = isDarkMode ? '#374151' : '#F9FAFB';
+  const inputBorder = isDarkMode ? '#4B5563' : '#E5E7EB';
+
+  function handleSubmit() {
+    setSubmitted(true);
+    setTimeout(onClose, 1800);
+  }
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={rateStyles.overlay} onPress={onClose}>
+        <Pressable style={[rateStyles.sheet, { backgroundColor: sheetBg }]} onPress={() => {}}>
+
+          {submitted ? (
+            /* Thank you state */
+            <View style={rateStyles.thanksWrap}>
+              <Text style={rateStyles.thanksEmoji}>🎉</Text>
+              <Text style={[rateStyles.thanksTitle, { color: textPrimary }]}>Thank you!</Text>
+              <Text style={[rateStyles.thanksSub, { color: textSub }]}>
+                Your feedback helps us improve SportMatch.
+              </Text>
+            </View>
+          ) : (
+            <>
+              {/* Logo */}
+              <View style={rateStyles.logoMark}>
+                <Text style={rateStyles.logoMarkText}>S</Text>
+              </View>
+              <Text style={[rateStyles.logoTitle, { color: textPrimary }]}>SportMatch</Text>
+              <Text style={[rateStyles.subtitle, { color: textSub }]}>Enjoying SportMatch?</Text>
+
+              {/* Stars */}
+              <View style={rateStyles.starsRow}>
+                {[1, 2, 3, 4, 5].map(n => (
+                  <TouchableOpacity key={n} onPress={() => setRating(n)} activeOpacity={0.7}>
+                    <Star
+                      size={40}
+                      color="#F59E0B"
+                      fill={n <= rating ? '#F59E0B' : 'transparent'}
+                      strokeWidth={n <= rating ? 0 : 1.5}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Feedback */}
+              <TextInput
+                style={[rateStyles.input, { backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }]}
+                value={feedback}
+                onChangeText={setFeedback}
+                placeholder="Any feedback? (optional)"
+                placeholderTextColor="#AAAAAA"
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+
+              {/* Submit */}
+              <TouchableOpacity
+                style={[rateStyles.submitBtn, rating === 0 && rateStyles.submitBtnDisabled]}
+                onPress={handleSubmit}
+                disabled={rating === 0}
+                activeOpacity={0.85}>
+                <Text style={rateStyles.submitBtnText}>Submit Rating</Text>
+              </TouchableOpacity>
+
+              {/* Maybe later */}
+              <TouchableOpacity onPress={onClose} activeOpacity={0.7}>
+                <Text style={[rateStyles.laterText, { color: textSub }]}>Maybe Later</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+const rateStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+  },
+  sheet: {
+    borderRadius: 24,
+    padding: 28,
+    alignItems: 'center',
+    gap: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  logoMark: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: '#208AEF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#208AEF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  logoMarkText: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  logoTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    marginTop: -4,
+  },
+  subtitle: {
+    fontSize: 15,
+    fontWeight: '400',
+    marginTop: -6,
+  },
+  starsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginVertical: 4,
+  },
+  input: {
+    width: '100%',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 12,
+    fontSize: 14,
+    minHeight: 80,
+  },
+  submitBtn: {
+    width: '100%',
+    backgroundColor: '#208AEF',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  submitBtnDisabled: {
+    backgroundColor: '#D1D5DB',
+  },
+  submitBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  laterText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginTop: -4,
+  },
+  thanksWrap: {
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 16,
+  },
+  thanksEmoji: {
+    fontSize: 48,
+  },
+  thanksTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  thanksSub: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 const LANGUAGES: { code: Language; label: string }[] = [
   { code: 'en', label: 'English' },
   { code: 'lt', label: 'Lietuvių' },
@@ -168,6 +366,8 @@ export default function SettingsScreen() {
   const { language, setLanguage, t } = useLanguage();
   const colors = isDarkMode ? DARK : LIGHT;
   const [langOpen, setLangOpen] = useState(false);
+  const [showRating, setShowRating] = useState(false);
+  const [showContact, setShowContact] = useState(false);
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
 
   async function pickImage() {
@@ -211,9 +411,6 @@ export default function SettingsScreen() {
         </View>
         <Text style={[styles.profileName, { color: colors.text }]}>Augustinas Barkus</Text>
         <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>augustinas@example.com</Text>
-        <TouchableOpacity style={styles.editBtn} activeOpacity={0.8} onPress={() => router.push('/edit-profile')}>
-          <Text style={styles.editBtnText}>{t.settings.editProfile}</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Account */}
@@ -253,8 +450,8 @@ export default function SettingsScreen() {
       <Section title={t.settings.sections.preferences} colors={colors}>
         {/* Language row — inline dropdown */}
         <TouchableOpacity style={styles.row} onPress={() => setLangOpen(v => !v)} activeOpacity={0.6}>
-          <View style={[styles.rowIcon, { backgroundColor: colors.iconBg }]}>
-            <Globe size={17} color={BLUE} strokeWidth={2} />
+          <View style={[styles.rowIcon, { backgroundColor: isDarkMode ? '#052E16' : '#F0FDF4' }]}>
+            <Globe size={17} color="#22C55E" strokeWidth={2} />
           </View>
           <Text style={[styles.rowLabel, { color: colors.text }]}>{t.settings.rows.language}</Text>
           <View style={styles.rowRight}>
@@ -293,33 +490,50 @@ export default function SettingsScreen() {
           </View>
         )}
         <Divider colors={colors} />
-        <SettingsRow icon={MapPin} label={t.settings.rows.location} colors={colors} />
+        <SettingsRow icon={MapPin} label={t.settings.rows.location}
+          onPress={() => router.push('/location')}
+          iconColor="#0D9488" rowIconBg={isDarkMode ? '#042F2E' : '#F0FDFA'}
+          colors={colors} />
         <Divider colors={colors} />
         <ToggleRow
           icon={Moon}
           label={t.settings.rows.darkMode}
           value={isDarkMode}
           onChange={toggleDarkMode}
+          iconColor="#7C3AED" rowIconBg={isDarkMode ? '#2E1065' : '#F5F3FF'}
           colors={colors}
         />
       </Section>
 
       {/* Support */}
       <Section title={t.settings.sections.support} colors={colors}>
-        <SettingsRow icon={LifeBuoy} label={t.settings.rows.helpCenter} colors={colors} />
+        <SettingsRow icon={LifeBuoy} label={t.settings.rows.helpCenter}
+          onPress={() => router.push('/help-center')}
+          iconColor="#EA580C" rowIconBg={isDarkMode ? '#431407' : '#FFF7ED'}
+          colors={colors} />
         <Divider colors={colors} />
-        <SettingsRow icon={Star} label={t.settings.rows.rateApp} colors={colors} />
+        <SettingsRow icon={Star} label={t.settings.rows.rateApp} onPress={() => setShowRating(true)}
+          iconColor="#D97706" rowIconBg={isDarkMode ? '#2D1A00' : '#FFFBEB'}
+          colors={colors} />
         <Divider colors={colors} />
-        <SettingsRow icon={Mail} label={t.settings.rows.contactUs} colors={colors} />
+        <SettingsRow icon={Mail} label={t.settings.rows.contactUs} onPress={() => setShowContact(true)}
+          iconColor="#208AEF" rowIconBg={isDarkMode ? '#1E3A5F' : '#EFF6FF'}
+          colors={colors} />
       </Section>
 
       {/* About */}
       <Section title={t.settings.sections.about} colors={colors}>
-        <SettingsRow icon={Info} label={t.settings.rows.version} value="1.0.0" colors={colors} />
+        <SettingsRow icon={Info} label={t.settings.rows.version} value="1.0.0"
+          iconColor="#6B7280" rowIconBg={isDarkMode ? '#1F2937' : '#F3F4F6'}
+          colors={colors} />
         <Divider colors={colors} />
-        <SettingsRow icon={FileText} label={t.settings.rows.termsOfService} colors={colors} />
+        <SettingsRow icon={FileText} label={t.settings.rows.termsOfService}
+          iconColor="#4F46E5" rowIconBg={isDarkMode ? '#1E1B4B' : '#EEF2FF'}
+          colors={colors} />
         <Divider colors={colors} />
-        <SettingsRow icon={Shield} label={t.settings.rows.privacyPolicy} colors={colors} />
+        <SettingsRow icon={Shield} label={t.settings.rows.privacyPolicy}
+          iconColor="#DC2626" rowIconBg={isDarkMode ? '#450A0A' : '#FEF2F2'}
+          colors={colors} />
       </Section>
 
       {/* Log Out */}
@@ -331,6 +545,13 @@ export default function SettingsScreen() {
       </TouchableOpacity>
 
     </ScrollView>
+
+    {showRating && (
+      <RateModal isDarkMode={isDarkMode} onClose={() => setShowRating(false)} />
+    )}
+    {showContact && (
+      <ContactModal isDarkMode={isDarkMode} onClose={() => setShowContact(false)} />
+    )}
     </View>
   );
 }
@@ -405,20 +626,6 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     marginTop: 2,
   },
-  editBtn: {
-    marginTop: 14,
-    paddingHorizontal: 24,
-    paddingVertical: 9,
-    borderRadius: 50,
-    borderWidth: 1.5,
-    borderColor: BLUE,
-  },
-  editBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: BLUE,
-  },
-
   // Section
   section: {
     gap: 8,
