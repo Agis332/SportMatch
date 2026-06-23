@@ -1,9 +1,13 @@
 import {
   Bell,
+  Calendar,
+  Camera,
   Check,
   ChevronRight,
+  CreditCard,
   FileText,
   Globe,
+  Heart,
   Info,
   LifeBuoy,
   LogOut,
@@ -15,9 +19,12 @@ import {
   User,
 } from 'lucide-react-native';
 import { useState } from 'react';
+import { router } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { type Language, useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
 import {
+  Image,
   ScrollView,
   StyleSheet,
   Switch,
@@ -79,18 +86,20 @@ const DARK: Theme = {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function SettingsRow({
-  icon: Icon, label, value, onPress, colors,
+  icon: Icon, label, value, onPress, colors, iconColor, rowIconBg,
 }: {
   icon: IconComponent;
   label: string;
   value?: string;
   onPress?: () => void;
   colors: Theme;
+  iconColor?: string;
+  rowIconBg?: string;
 }) {
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.6}>
-      <View style={[styles.rowIcon, { backgroundColor: colors.iconBg }]}>
-        <Icon size={17} color={BLUE} strokeWidth={2} />
+      <View style={[styles.rowIcon, { backgroundColor: rowIconBg ?? colors.iconBg }]}>
+        <Icon size={17} color={iconColor ?? BLUE} strokeWidth={2} />
       </View>
       <Text style={[styles.rowLabel, { color: colors.text }]}>{label}</Text>
       <View style={styles.rowRight}>
@@ -159,6 +168,21 @@ export default function SettingsScreen() {
   const { language, setLanguage, t } = useLanguage();
   const colors = isDarkMode ? DARK : LIGHT;
   const [langOpen, setLangOpen] = useState(false);
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+
+  async function pickImage() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setAvatarUri(result.assets[0].uri);
+    }
+  }
 
   return (
     <View style={[styles.root, { backgroundColor: colors.bg }]}>
@@ -173,23 +197,55 @@ export default function SettingsScreen() {
 
       {/* Profile */}
       <View style={styles.profile}>
-        <View style={[styles.avatar, { backgroundColor: colors.avatarBg, borderColor: colors.avatarBorder }]}>
-          <Text style={styles.avatarInitials}>AB</Text>
+        <View style={styles.avatarWrap}>
+          <TouchableOpacity onPress={pickImage} activeOpacity={0.8}>
+            <View style={[styles.avatar, { backgroundColor: colors.avatarBg, borderColor: colors.avatarBorder }]}>
+              {avatarUri
+                ? <Image source={{ uri: avatarUri }} style={styles.avatarPhoto} />
+                : <Text style={styles.avatarInitials}>AB</Text>}
+            </View>
+          </TouchableOpacity>
+          <View style={styles.cameraBadge}>
+            <Camera size={11} color="#FFFFFF" strokeWidth={2.5} />
+          </View>
         </View>
         <Text style={[styles.profileName, { color: colors.text }]}>Augustinas Barkus</Text>
         <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>augustinas@example.com</Text>
-        <TouchableOpacity style={styles.editBtn} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.editBtn} activeOpacity={0.8} onPress={() => router.push('/edit-profile')}>
           <Text style={styles.editBtnText}>{t.settings.editProfile}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Account */}
       <Section title={t.settings.sections.account} colors={colors}>
-        <SettingsRow icon={User} label={t.settings.rows.profile} colors={colors} />
+        <SettingsRow
+          icon={User} label={t.settings.rows.editProfile}
+          onPress={() => router.push('/edit-profile')}
+          iconColor="#208AEF" rowIconBg={isDarkMode ? '#1E3A5F' : '#EFF6FF'}
+          colors={colors} />
         <Divider colors={colors} />
-        <SettingsRow icon={Bell} label={t.settings.rows.notifications} colors={colors} />
+        <SettingsRow
+          icon={Heart} label={t.settings.rows.savedTrainers}
+          onPress={() => router.push('/favorites')}
+          iconColor="#EF4444" rowIconBg={isDarkMode ? '#450A0A' : '#FEF2F2'}
+          colors={colors} />
         <Divider colors={colors} />
-        <SettingsRow icon={Shield} label={t.settings.rows.privacy} colors={colors} />
+        <SettingsRow
+          icon={Calendar} label={t.settings.rows.myBookings}
+          onPress={() => router.push('/bookings')}
+          iconColor="#22C55E" rowIconBg={isDarkMode ? '#052E16' : '#F0FDF4'}
+          colors={colors} />
+        <Divider colors={colors} />
+        <SettingsRow
+          icon={CreditCard} label={t.settings.rows.paymentMethods}
+          onPress={() => router.push('/payment-methods')}
+          iconColor="#8B5CF6" rowIconBg={isDarkMode ? '#2E1065' : '#EDE9FE'}
+          colors={colors} />
+        <Divider colors={colors} />
+        <SettingsRow
+          icon={Bell} label={t.settings.rows.notifications}
+          iconColor="#F59E0B" rowIconBg={isDarkMode ? '#451A03' : '#FFFBEB'}
+          colors={colors} />
       </Section>
 
       {/* Preferences */}
@@ -298,24 +354,46 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     gap: 4,
   },
+  avatarWrap: {
+    position: 'relative',
+    marginBottom: 8,
+  },
   avatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
     borderWidth: 3,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
   },
+  avatarPhoto: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+  },
   avatarInitials: {
     fontSize: 26,
     fontWeight: '700',
     color: BLUE,
+  },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: BLUE,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   profileName: {
     fontSize: 20,

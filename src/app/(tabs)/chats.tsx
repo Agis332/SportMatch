@@ -183,7 +183,10 @@ function ChatRow({ item, unread, onPress }: { item: Conversation; unread: number
           </View>
           {item.online && <View style={[styles.onlineDot, { borderColor: ringColor }]} />}
           {SPORT_EMOJI[item.sport] && (
-            <View style={[styles.sportBadge, { backgroundColor: isDarkMode ? '#1F2937' : '#FFFFFF' }]}>
+            <View style={[styles.sportBadge, {
+              backgroundColor: isDarkMode ? '#1F2937' : '#FFFFFF',
+              borderColor: isDarkMode ? '#4B5563' : '#E0E0E0',
+            }]}>
               <Text style={styles.sportEmoji}>{SPORT_EMOJI[item.sport]}</Text>
             </View>
           )}
@@ -195,7 +198,9 @@ function ChatRow({ item, unread, onPress }: { item: Conversation; unread: number
             <View style={styles.nameRow}>
               <Text style={[styles.name, { color: nameColor }]} numberOfLines={1}>{item.name}</Text>
               {item.verified && (
-                <BadgeCheck size={16} color="#FFFFFF" fill="#22C55E" strokeWidth={2.5} />
+                <View style={[styles.verifiedWrap, { backgroundColor: isDarkMode ? '#1F2937' : '#FFFFFF' }]}>
+                  <BadgeCheck size={16} color="#FFFFFF" fill="#22C55E" strokeWidth={2.5} />
+                </View>
               )}
             </View>
             <Text style={[styles.timestamp, unread > 0 && styles.timestampUnread]}>
@@ -406,6 +411,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -430,6 +436,14 @@ const styles = StyleSheet.create({
     gap: 4,
     flex: 1,
     minWidth: 0,
+  },
+  verifiedWrap: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
   name: {
     fontSize: 15,

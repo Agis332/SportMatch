@@ -18,7 +18,10 @@ export interface Translations {
       about: string;
     };
     rows: {
-      profile: string;
+      editProfile: string;
+      savedTrainers: string;
+      myBookings: string;
+      paymentMethods: string;
       notifications: string;
       privacy: string;
       language: string;
@@ -110,7 +113,10 @@ const translations: Record<Language, Translations> = {
         about: 'About',
       },
       rows: {
-        profile: 'Profile',
+        editProfile: 'Edit Profile',
+        savedTrainers: 'Saved Trainers',
+        myBookings: 'My Bookings',
+        paymentMethods: 'Payment Methods',
         notifications: 'Notifications',
         privacy: 'Privacy',
         language: 'Language',
@@ -200,7 +206,10 @@ const translations: Record<Language, Translations> = {
         about: 'Apie',
       },
       rows: {
-        profile: 'Profilis',
+        editProfile: 'Redaguoti profilį',
+        savedTrainers: 'Išsaugoti treneriai',
+        myBookings: 'Mano rezervacijos',
+        paymentMethods: 'Mokėjimo metodai',
         notifications: 'Pranešimai',
         privacy: 'Privatumas',
         language: 'Kalba',

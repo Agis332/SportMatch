@@ -168,19 +168,23 @@ export default function ChatScreen() {
           <ChevronLeft size={26} color={backIconColor} strokeWidth={2} />
         </TouchableOpacity>
 
-        <View style={[styles.headerAvatar, { backgroundColor: avatarColor(id) }]}>
-          <Text style={styles.headerInitials}>{trainer.initials}</Text>
-        </View>
-
-        <View style={styles.headerInfo}>
-          <Text style={[styles.headerName, { color: headerTextColor }]} numberOfLines={1}>{trainer.name}</Text>
-          <View style={styles.headerSubRow}>
-            {trainer.online && <View style={styles.onlineDot} />}
-            <Text style={[styles.headerSub, { color: headerSubColor }]}>
-              {trainer.online ? 'Active now' : trainer.sport}
-            </Text>
+        <TouchableOpacity
+          style={styles.headerTrainer}
+          onPress={() => router.push(`/trainer/${id}`)}
+          activeOpacity={0.7}>
+          <View style={[styles.headerAvatar, { backgroundColor: avatarColor(id) }]}>
+            <Text style={styles.headerInitials}>{trainer.initials}</Text>
           </View>
-        </View>
+          <View style={styles.headerInfo}>
+            <Text style={[styles.headerName, { color: headerTextColor }]} numberOfLines={1}>{trainer.name}</Text>
+            <View style={styles.headerSubRow}>
+              {trainer.online && <View style={styles.onlineDot} />}
+              <Text style={[styles.headerSub, { color: headerSubColor }]}>
+                {trainer.online ? 'Active now' : trainer.sport}
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
       </View>
 
       {/* Messages */}
@@ -283,6 +287,12 @@ const styles = StyleSheet.create({
   backBtn: {
     padding: 4,
     flexShrink: 0,
+  },
+  headerTrainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   headerAvatar: {
     width: 38,
