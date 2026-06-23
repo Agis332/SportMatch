@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { Award, ChevronLeft, Clock, Heart, MapPin, Star, Users, Zap } from 'lucide-react-native';
+import { Award, BadgeCheck, ChevronLeft, Clock, Heart, MapPin, MessageCircle, Star, Users, Zap } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   ScrollView,
@@ -51,11 +51,12 @@ interface TrainerProfile {
   specializations: string[];
   availability: boolean[];
   reviews: Review[];
+  verified: boolean;
 }
 
 const PROFILES: Record<string, TrainerProfile> = {
   '1': {
-    id: '1', name: 'Mantas Petrauskas', initials: 'MP', sport: 'Football', emoji: '⚽',
+    id: '1', name: 'Mantas Petrauskas', initials: 'MP', sport: 'Football', emoji: '⚽', verified: true,
     rating: 4.8, reviewCount: 47, online: true, price: 35, sessions: 128, experience: 5,
     responseTime: '~1h', city: 'Vilnius',
     bio: 'Professional football coach with 5 years of experience training players of all skill levels. Former semi-professional player, now dedicated to helping others improve through structured, personalized sessions focused on technique and tactical awareness.',
@@ -68,7 +69,7 @@ const PROFILES: Record<string, TrainerProfile> = {
     ],
   },
   '2': {
-    id: '2', name: 'Rūta Kazlauskaitė', initials: 'RK', sport: 'Yoga', emoji: '🧘',
+    id: '2', name: 'Rūta Kazlauskaitė', initials: 'RK', sport: 'Yoga', emoji: '🧘', verified: true,
     rating: 4.9, reviewCount: 83, online: true, price: 45, sessions: 214, experience: 7,
     responseTime: '<30min', city: 'Vilnius',
     bio: 'Certified yoga instructor trained in Vinyasa and Hatha traditions with 7 years of teaching experience. I believe yoga is for everybody — my sessions are welcoming, mindful, and tailored to each student\'s body and goals.',
@@ -80,7 +81,7 @@ const PROFILES: Record<string, TrainerProfile> = {
     ],
   },
   '3': {
-    id: '3', name: 'Tomas Žukauskas', initials: 'TŽ', sport: 'Basketball', emoji: '🏀',
+    id: '3', name: 'Tomas Žukauskas', initials: 'TŽ', sport: 'Basketball', emoji: '🏀', verified: false,
     rating: 4.7, reviewCount: 36, online: false, price: 30, sessions: 95, experience: 4,
     responseTime: '~2h', city: 'Kaunas',
     bio: 'Basketball trainer with a background in Lithuanian youth leagues. I focus on building solid fundamentals while making every session competitive and fun. Great fit for beginners and intermediate players looking to level up.',
@@ -92,7 +93,7 @@ const PROFILES: Record<string, TrainerProfile> = {
     ],
   },
   '4': {
-    id: '4', name: 'Aistė Mikalauskaitė', initials: 'AM', sport: 'Tennis', emoji: '🎾',
+    id: '4', name: 'Aistė Mikalauskaitė', initials: 'AM', sport: 'Tennis', emoji: '🎾', verified: false,
     rating: 4.6, reviewCount: 29, online: false, price: 50, sessions: 74, experience: 6,
     responseTime: '~3h', city: 'Vilnius',
     bio: 'Former competitive tennis player turned coach. I specialize in technique refinement and match strategy for intermediate to advanced players. My sessions are data-driven — I use video analysis to accelerate improvement.',
@@ -104,7 +105,7 @@ const PROFILES: Record<string, TrainerProfile> = {
     ],
   },
   '5': {
-    id: '5', name: 'Darius Paulauskas', initials: 'DP', sport: 'Boxing', emoji: '🥊',
+    id: '5', name: 'Darius Paulauskas', initials: 'DP', sport: 'Boxing', emoji: '🥊', verified: true,
     rating: 4.9, reviewCount: 61, online: true, price: 40, sessions: 183, experience: 8,
     responseTime: '<1h', city: 'Klaipėda',
     bio: 'Licensed boxing coach with 8 years of experience training amateurs and fitness enthusiasts. My sessions combine technical boxing skills with high-intensity conditioning — you\'ll leave every session stronger and more confident.',
@@ -119,7 +120,7 @@ const PROFILES: Record<string, TrainerProfile> = {
 };
 
 const DEFAULT_PROFILE: TrainerProfile = {
-  id: '0', name: 'Trainer', initials: '?', sport: 'Sport', emoji: '🏅',
+  id: '0', name: 'Trainer', initials: '?', sport: 'Sport', emoji: '🏅', verified: false,
   rating: 4.5, reviewCount: 12, online: false, price: 35, sessions: 40, experience: 3,
   responseTime: '~2h', city: 'Vilnius',
   bio: 'Experienced sports trainer dedicated to helping clients reach their personal fitness goals through tailored, effective training programs.',
@@ -208,6 +209,13 @@ export default function TrainerProfileScreen() {
           </View>
 
           <Text style={[styles.trainerName, { color: textPrimary }]}>{profile.name}</Text>
+
+          {profile.verified && (
+            <View style={styles.verifiedRow}>
+              <BadgeCheck size={16} color="#FFFFFF" fill="#22C55E" strokeWidth={2.5} />
+              <Text style={styles.verifiedText}>Verified Trainer</Text>
+            </View>
+          )}
 
           <View style={styles.sportRow}>
             <Text style={styles.sportEmoji}>{profile.emoji}</Text>
@@ -329,9 +337,14 @@ export default function TrainerProfileScreen() {
           <Text style={[styles.bottomPrice, { color: textPrimary }]}>€{profile.price}<Text style={[styles.bottomPriceUnit, { color: textSub }]}>/hr</Text></Text>
           <Text style={[styles.bottomPriceNote, { color: textSub }]}>per session</Text>
         </View>
-        <TouchableOpacity style={styles.bookBtn} onPress={() => router.push(`/booking/${profile.id}`)} activeOpacity={0.85}>
-          <Text style={styles.bookBtnText}>Book Session</Text>
-        </TouchableOpacity>
+        <View style={styles.bottomRight}>
+          <TouchableOpacity style={styles.msgIconBtn} onPress={() => router.push('/chat/1')} activeOpacity={0.85}>
+            <MessageCircle size={22} color={BLUE} strokeWidth={2} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.bookBtn} onPress={() => router.push(`/booking/${profile.id}`)} activeOpacity={0.85}>
+            <Text style={styles.bookBtnText}>Book Session</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
     </View>
@@ -397,6 +410,16 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     textAlign: 'center',
+  },
+  verifiedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  verifiedText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#22C55E',
   },
   sportRow: {
     flexDirection: 'row',
@@ -618,10 +641,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 1,
   },
+  bottomRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  msgIconBtn: {
+    width: 50,
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: BLUE,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
   bookBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     backgroundColor: BLUE,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
+    paddingHorizontal: 24,
+    height: 52,
     borderRadius: 14,
   },
   bookBtnText: {

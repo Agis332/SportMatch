@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { ChevronDown, Heart, MapPin, Search, Star, User, Users, X } from 'lucide-react-native';
+import { BadgeCheck, ChevronDown, Heart, MapPin, Search, Star, User, Users, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import {
   FlatList,
@@ -21,6 +21,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
 
 const BLUE = '#208AEF';
@@ -62,18 +63,19 @@ interface Trainer {
   price: number;
   city: string;
   initials: string;
+  verified: boolean;
 }
 
 const TRAINERS: Trainer[] = [
-  { id: '1', name: 'Mantas Petrauskas', sport: 'Football', rating: 4.8, price: 35, city: 'Vilnius', initials: 'MP' },
-  { id: '2', name: 'Rūta Kazlauskaitė', sport: 'Yoga', rating: 4.9, price: 45, city: 'Vilnius', initials: 'RK' },
-  { id: '3', name: 'Tomas Žukauskas', sport: 'Basketball', rating: 4.7, price: 30, city: 'Kaunas', initials: 'TŽ' },
-  { id: '4', name: 'Aistė Mikalauskaitė', sport: 'Tennis', rating: 4.6, price: 50, city: 'Vilnius', initials: 'AM' },
-  { id: '5', name: 'Darius Paulauskas', sport: 'Boxing', rating: 4.9, price: 40, city: 'Klaipėda', initials: 'DP' },
-  { id: '6', name: 'Laura Stankevičiūtė', sport: 'CrossFit', rating: 4.5, price: 35, city: 'Vilnius', initials: 'LS' },
-  { id: '7', name: 'Erikas Butkus', sport: 'Running', rating: 4.7, price: 28, city: 'Kaunas', initials: 'EB' },
-  { id: '8', name: 'Ingrida Vaitkutė', sport: 'Swimming', rating: 4.8, price: 55, city: 'Vilnius', initials: 'IV' },
-  { id: '9', name: 'Aurimas Grigas', sport: 'Martial Arts', rating: 4.6, price: 38, city: 'Vilnius', initials: 'AG' },
+  { id: '1', name: 'Mantas Petrauskas', sport: 'Football',    rating: 4.8, price: 35, city: 'Vilnius',   initials: 'MP', verified: true  },
+  { id: '2', name: 'Rūta Kazlauskaitė', sport: 'Yoga',        rating: 4.9, price: 45, city: 'Vilnius',   initials: 'RK', verified: true  },
+  { id: '3', name: 'Tomas Žukauskas',   sport: 'Basketball',  rating: 4.7, price: 30, city: 'Kaunas',    initials: 'TŽ', verified: false },
+  { id: '4', name: 'Aistė Mikalauskaitė', sport: 'Tennis',    rating: 4.6, price: 50, city: 'Vilnius',   initials: 'AM', verified: false },
+  { id: '5', name: 'Darius Paulauskas', sport: 'Boxing',      rating: 4.9, price: 40, city: 'Klaipėda',  initials: 'DP', verified: true  },
+  { id: '6', name: 'Laura Stankevičiūtė', sport: 'CrossFit',  rating: 4.5, price: 35, city: 'Vilnius',   initials: 'LS', verified: false },
+  { id: '7', name: 'Erikas Butkus',     sport: 'Running',     rating: 4.7, price: 28, city: 'Kaunas',    initials: 'EB', verified: false },
+  { id: '8', name: 'Ingrida Vaitkutė', sport: 'Swimming',    rating: 4.8, price: 55, city: 'Vilnius',   initials: 'IV', verified: true  },
+  { id: '9', name: 'Aurimas Grigas',    sport: 'Martial Arts', rating: 4.6, price: 38, city: 'Vilnius',  initials: 'AG', verified: false },
 ];
 
 const AVATAR_COLORS = [
@@ -108,9 +110,9 @@ function SportChip({ label, emoji, isSelected, onPress }: {
 
   const chipBg = isSelected
     ? (isDarkMode ? '#1E3A5F' : '#EBF5FF')
-    : (isDarkMode ? '#1F2937' : '#F3F4F6');
+    : (isDarkMode ? '#2D3748' : '#F3F4F6');
   const chipBorder = isSelected ? BLUE : 'transparent';
-  const textColor = isSelected ? BLUE : (isDarkMode ? '#9CA3AF' : '#6B7280');
+  const textColor = isSelected ? BLUE : (isDarkMode ? '#FFFFFF' : '#6B7280');
 
   return (
     <Animated.View style={animatedStyle}>
@@ -159,7 +161,12 @@ function TrainerCard({ item, isFavorite, onFavorite }: {
         </View>
 
         <View style={styles.cardBody}>
-          <Text style={[styles.trainerName, { color: nameColor }]}>{item.name}</Text>
+          <View style={styles.nameRow}>
+            <Text style={[styles.trainerName, { color: nameColor }]} numberOfLines={1}>{item.name}</Text>
+            {item.verified && (
+              <BadgeCheck size={16} color="#FFFFFF" fill="#22C55E" strokeWidth={2.5} />
+            )}
+          </View>
           <Text style={[styles.trainerSport, { color: metaColor }]}>
             {SPORT_EMOJI[item.sport] ? `${SPORT_EMOJI[item.sport]} ` : ''}{item.sport}
           </Text>
@@ -193,6 +200,7 @@ function TrainerCard({ item, isFavorite, onFavorite }: {
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
+  const { t } = useLanguage();
 
   const [selectedCity, setSelectedCity] = useState('Vilnius');
   const [sessionType, setSessionType] = useState<'individual' | 'group'>('individual');
@@ -255,7 +263,7 @@ export default function HomeScreen() {
             }}
             activeOpacity={0.7}>
             <Search size={18} color={searchVisible ? BLUE : textSecondary} strokeWidth={2} />
-            <Text style={styles.searchIconBtnText}>Search</Text>
+            <Text style={styles.searchIconBtnText}>{t.home.search}</Text>
           </TouchableOpacity>
         </View>
 
@@ -264,7 +272,7 @@ export default function HomeScreen() {
             <Search size={15} color={textSecondary} strokeWidth={2} />
             <TextInput
               style={[styles.searchInput, { color: '#111827' }]}
-              placeholder="Search your trainer..."
+              placeholder={t.home.searchPlaceholder}
               placeholderTextColor="#AAAAAA"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -281,8 +289,8 @@ export default function HomeScreen() {
 
         <View style={styles.sessionToggle}>
           {([
-            { type: 'individual', Icon: User,  label: 'Individual', sub: '1-on-1 training' },
-            { type: 'group',      Icon: Users, label: 'Group',      sub: '2–8 people'     },
+            { type: 'individual', Icon: User,  label: t.home.individual, sub: t.home.individualSub },
+            { type: 'group',      Icon: Users, label: t.home.group,       sub: t.home.groupSub     },
           ] as const).map(({ type, Icon, label, sub }) => {
             const active = sessionType === type;
             const iconColor  = active ? '#FFFFFF' : textSecondary;
@@ -312,7 +320,7 @@ export default function HomeScreen() {
         {SPORTS.map(sport => (
           <SportChip
             key={sport.label}
-            label={sport.label}
+            label={sport.label === 'All' ? t.home.sportAll : sport.label}
             emoji={sport.emoji}
             isSelected={selectedSport === sport.label}
             onPress={() => setSelectedSport(sport.label)}
@@ -329,7 +337,7 @@ export default function HomeScreen() {
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={[styles.emptyText, { color: textSecondary }]}>No trainers found</Text>
+            <Text style={[styles.emptyText, { color: textSecondary }]}>{t.home.noTrainers}</Text>
           </View>
         }
         renderItem={({ item }) => (
@@ -350,7 +358,7 @@ export default function HomeScreen() {
         <Pressable style={styles.overlay} onPress={() => setCityModalVisible(false)}>
           <View style={[styles.sheet, { backgroundColor: sheetBg, paddingBottom: insets.bottom + 20 }]}>
             <View style={styles.sheetHeader}>
-              <Text style={[styles.sheetTitle, { color: textPrimary }]}>Select a city</Text>
+              <Text style={[styles.sheetTitle, { color: textPrimary }]}>{t.home.selectCity}</Text>
               <TouchableOpacity onPress={() => setCityModalVisible(false)}>
                 <X size={20} color={textSecondary} strokeWidth={2} />
               </TouchableOpacity>
@@ -541,9 +549,15 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 3,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
   trainerName: {
     fontSize: 15,
     fontWeight: '600',
+    flexShrink: 1,
   },
   trainerSport: {
     fontSize: 13,

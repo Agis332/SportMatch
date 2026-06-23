@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
 
 const BLUE = '#208AEF';
@@ -67,9 +68,7 @@ function formatDate(d: Date) {
 
 // ─── Progress bar ─────────────────────────────────────────────────────────────
 
-const STEP_LABELS = ['Date', 'Time', 'Type', 'Details'];
-
-function ProgressBar({ current }: { current: number }) {
+function ProgressBar({ current, stepLabels }: { current: number; stepLabels: string[] }) {
   const items: React.ReactNode[] = [];
   [1, 2, 3, 4].forEach((step, i) => {
     const done   = step < current;
@@ -82,7 +81,7 @@ function ProgressBar({ current }: { current: number }) {
           </Text>
         </View>
         <Text style={[styles.progLabel, active && styles.progLabelActive]}>
-          {STEP_LABELS[i]}
+          {stepLabels[i]}
         </Text>
       </View>,
     );
@@ -138,6 +137,7 @@ export default function BookingScreen() {
   const { id }   = useLocalSearchParams<{ id: string }>();
   const insets   = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
+  const { t } = useLanguage();
   const { width } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
 
@@ -198,17 +198,17 @@ export default function BookingScreen() {
         <View style={styles.successIcon}>
           <Check size={36} color="#FFFFFF" strokeWidth={2.5} />
         </View>
-        <Text style={[styles.successTitle, { color: textPrimary }]}>Booking Confirmed!</Text>
+        <Text style={[styles.successTitle, { color: textPrimary }]}>{t.booking.confirmed}</Text>
         <Text style={[styles.successSub, { color: textSub }]}>
-          Your session with {trainer.name} is booked for{'\n'}
-          {selectedDate ? formatDate(selectedDate) : ''} at {selectedTime}.
+          {t.booking.sessionWith} {trainer.name} {t.booking.bookedFor}{'\n'}
+          {selectedDate ? formatDate(selectedDate) : ''} {t.booking.at} {selectedTime}.
         </Text>
         <View style={[styles.successCard, { backgroundColor: cardBg, borderColor }]}>
           {([
-            ['Trainer',  `${trainer.emoji} ${trainer.name}`],
-            ['Sport',    trainer.sport],
-            ['Session',  sessionType === 'individual' ? 'Individual' : 'Group'],
-            ['Total',    `€${trainer.price}`],
+            [t.booking.trainer, `${trainer.emoji} ${trainer.name}`],
+            [t.booking.sport,   trainer.sport],
+            [t.booking.session, sessionType === 'individual' ? t.booking.individual : t.booking.group],
+            [t.booking.total,   `€${trainer.price}`],
           ] as [string, string][]).map(([label, val]) => (
             <View key={label} style={styles.successRow}>
               <Text style={[styles.successRowLabel, { color: textSub }]}>{label}</Text>
@@ -220,7 +220,7 @@ export default function BookingScreen() {
           style={styles.successBtn}
           onPress={() => { router.back(); router.back(); }}
           activeOpacity={0.85}>
-          <Text style={styles.successBtnText}>Back to Home</Text>
+          <Text style={styles.successBtnText}>{t.booking.backToHome}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -235,13 +235,16 @@ export default function BookingScreen() {
         <TouchableOpacity style={styles.backBtn} onPress={handleBack} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <ChevronLeft size={24} color={textPrimary} strokeWidth={2} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: textPrimary }]}>Book a Session</Text>
+        <Text style={[styles.headerTitle, { color: textPrimary }]}>{t.booking.headerTitle}</Text>
         <View style={styles.backBtn} />
       </View>
 
       {/* Progress bar */}
       <View style={[styles.progressWrap, { backgroundColor: bg, borderBottomColor: borderColor }]}>
-        <ProgressBar current={step} />
+        <ProgressBar
+          current={step}
+          stepLabels={[t.booking.steps.date, t.booking.steps.time, t.booking.steps.type, t.booking.steps.details]}
+        />
       </View>
 
       {/* Content */}
@@ -255,8 +258,8 @@ export default function BookingScreen() {
           {/* ── Step 1: Date ── */}
           {step === 1 && (
             <View style={styles.stepContent}>
-              <Text style={[styles.stepTitle, { color: textPrimary }]}>Select a Date</Text>
-              <Text style={[styles.stepSub, { color: textSub }]}>Choose your preferred training day</Text>
+              <Text style={[styles.stepTitle, { color: textPrimary }]}>{t.booking.selectDate}</Text>
+              <Text style={[styles.stepSub, { color: textSub }]}>{t.booking.selectDateSub}</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -299,7 +302,7 @@ export default function BookingScreen() {
           {/* ── Step 2: Time ── */}
           {step === 2 && (
             <View style={styles.stepContent}>
-              <Text style={[styles.stepTitle, { color: textPrimary }]}>Select a Time</Text>
+              <Text style={[styles.stepTitle, { color: textPrimary }]}>{t.booking.selectTime}</Text>
               <Text style={[styles.stepSub, { color: textSub }]}>
                 {selectedDate ? formatDate(selectedDate) : ''}
               </Text>
@@ -326,7 +329,7 @@ export default function BookingScreen() {
                         {slot.time}
                       </Text>
                       {isDisabled && (
-                        <Text style={[styles.bookedLabel, { color: isDarkMode ? '#4B5563' : '#D1D5DB' }]}>booked</Text>
+                        <Text style={[styles.bookedLabel, { color: isDarkMode ? '#4B5563' : '#D1D5DB' }]}>{t.booking.booked}</Text>
                       )}
                     </TouchableOpacity>
                   );
@@ -338,12 +341,12 @@ export default function BookingScreen() {
           {/* ── Step 3: Session type ── */}
           {step === 3 && (
             <View style={styles.stepContent}>
-              <Text style={[styles.stepTitle, { color: textPrimary }]}>Session Type</Text>
-              <Text style={[styles.stepSub, { color: textSub }]}>How would you like to train?</Text>
+              <Text style={[styles.stepTitle, { color: textPrimary }]}>{t.booking.sessionType}</Text>
+              <Text style={[styles.stepSub, { color: textSub }]}>{t.booking.sessionTypeSub}</Text>
               <View style={styles.sessionRow}>
                 {([
-                  { type: 'individual' as const, Icon: User,  label: 'Individual', sub: '1-on-1 with trainer' },
-                  { type: 'group'      as const, Icon: Users, label: 'Group',       sub: 'Train with 2–8 people' },
+                  { type: 'individual' as const, Icon: User,  label: t.booking.individual, sub: t.booking.individualSub },
+                  { type: 'group'      as const, Icon: Users, label: t.booking.group,       sub: t.booking.groupSub },
                 ]).map(({ type, Icon, label, sub }) => {
                   const active = sessionType === type;
                   return (
@@ -363,7 +366,9 @@ export default function BookingScreen() {
               </View>
               <View style={[styles.sessionPriceBadge, { backgroundColor: chipBg }]}>
                 <Text style={[styles.sessionPriceBadgeText, { color: textSub }]}>
-                  {sessionType === 'group' ? `Group rate: €${Math.round(trainer.price * 0.6)}/hr per person` : `Individual rate: €${trainer.price}/hr`}
+                  {sessionType === 'group'
+                    ? `${t.booking.groupRate}: €${Math.round(trainer.price * 0.6)}/hr ${t.booking.perPerson}`
+                    : `${t.booking.individualRate}: €${trainer.price}/hr`}
                 </Text>
               </View>
             </View>
@@ -372,38 +377,38 @@ export default function BookingScreen() {
           {/* ── Step 4: Details + Summary ── */}
           {step === 4 && (
             <View style={styles.stepContent}>
-              <Text style={[styles.stepTitle, { color: textPrimary }]}>Your Details</Text>
+              <Text style={[styles.stepTitle, { color: textPrimary }]}>{t.booking.yourDetails}</Text>
               <View style={styles.formGrid}>
                 <View style={styles.formRow}>
                   <View style={styles.formHalf}>
-                    <FormInput label="Name" value={firstName} onChangeText={setFirstName}
-                      placeholder="Name" inputBg={inputBg} textColor={textPrimary} borderColor={borderColor} />
+                    <FormInput label={t.booking.name} value={firstName} onChangeText={setFirstName}
+                      placeholder={t.booking.namePlaceholder} inputBg={inputBg} textColor={textPrimary} borderColor={borderColor} />
                   </View>
                   <View style={styles.formHalf}>
-                    <FormInput label="Surname" value={lastName} onChangeText={setLastName}
-                      placeholder="Surname" inputBg={inputBg} textColor={textPrimary} borderColor={borderColor} />
+                    <FormInput label={t.booking.surname} value={lastName} onChangeText={setLastName}
+                      placeholder={t.booking.surnamePlaceholder} inputBg={inputBg} textColor={textPrimary} borderColor={borderColor} />
                   </View>
                 </View>
-                <FormInput label="Phone" value={phone} onChangeText={setPhone}
-                  placeholder="+370 600 00000" keyboardType="phone-pad"
+                <FormInput label={t.booking.phone} value={phone} onChangeText={setPhone}
+                  placeholder={t.booking.phonePlaceholder} keyboardType="phone-pad"
                   inputBg={inputBg} textColor={textPrimary} borderColor={borderColor} />
-                <FormInput label="Email" value={email} onChangeText={setEmail}
-                  placeholder="your@email.com" keyboardType="email-address"
+                <FormInput label={t.booking.email} value={email} onChangeText={setEmail}
+                  placeholder={t.booking.emailPlaceholder} keyboardType="email-address"
                   inputBg={inputBg} textColor={textPrimary} borderColor={borderColor} />
-                <FormInput label="Special requests (optional)" value={notes} onChangeText={setNotes}
-                  placeholder="Anything the trainer should know..." multiline
+                <FormInput label={t.booking.notes} value={notes} onChangeText={setNotes}
+                  placeholder={t.booking.notesPlaceholder} multiline
                   inputBg={inputBg} textColor={textPrimary} borderColor={borderColor} />
               </View>
 
               {/* Summary */}
-              <Text style={[styles.summaryTitle, { color: textPrimary }]}>Booking Summary</Text>
+              <Text style={[styles.summaryTitle, { color: textPrimary }]}>{t.booking.bookingSummary}</Text>
               <View style={[styles.summaryCard, { backgroundColor: cardBg, borderColor }]}>
                 {([
-                  ['Trainer', `${trainer.emoji} ${trainer.name}`],
-                  ['Sport',   trainer.sport],
-                  ['Date',    selectedDate ? formatDate(selectedDate) : '—'],
-                  ['Time',    selectedTime ?? '—'],
-                  ['Session', sessionType === 'individual' ? 'Individual' : 'Group'],
+                  [t.booking.trainer, `${trainer.emoji} ${trainer.name}`],
+                  [t.booking.sport,   trainer.sport],
+                  [t.booking.date,    selectedDate ? formatDate(selectedDate) : '—'],
+                  [t.booking.time,    selectedTime ?? '—'],
+                  [t.booking.session, sessionType === 'individual' ? t.booking.individual : t.booking.group],
                 ] as [string, string][]).map(([label, val]) => (
                   <View key={label} style={[styles.summaryRow, { borderBottomColor: borderColor }]}>
                     <Text style={[styles.summaryLabel, { color: textSub }]}>{label}</Text>
@@ -411,7 +416,7 @@ export default function BookingScreen() {
                   </View>
                 ))}
                 <View style={styles.summaryTotal}>
-                  <Text style={[styles.summaryTotalLabel, { color: textPrimary }]}>Total</Text>
+                  <Text style={[styles.summaryTotalLabel, { color: textPrimary }]}>{t.booking.total}</Text>
                   <Text style={styles.summaryTotalValue}>
                     €{sessionType === 'group' ? Math.round(trainer.price * 0.6) : trainer.price}/hr
                   </Text>
@@ -431,7 +436,7 @@ export default function BookingScreen() {
           disabled={!canProceed}
           activeOpacity={0.85}>
           <Text style={styles.actionBtnText}>
-            {step < 4 ? 'Next  →' : 'Book Now'}
+            {step < 4 ? t.booking.next : t.booking.bookNow}
           </Text>
         </TouchableOpacity>
       </View>

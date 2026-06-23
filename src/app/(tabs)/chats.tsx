@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from 'expo-router';
-import { Search } from 'lucide-react-native';
+import { BadgeCheck, Search } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
 import { isConversationRead } from '@/store/read-conversations';
 import { useTheme } from '@/context/ThemeContext';
@@ -30,8 +30,10 @@ interface Conversation {
   sport: string;
   lastMessage: string;
   timestamp: string;
+  sortTime: number;
   unread: number;
   online: boolean;
+  verified: boolean;
 }
 
 const CONVERSATIONS: Conversation[] = [
@@ -42,8 +44,10 @@ const CONVERSATIONS: Conversation[] = [
     sport: 'Yoga',
     lastMessage: 'See you Thursday at 9am! Don\'t forget your mat 🧘',
     timestamp: '9:41 AM',
+    sortTime: Date.parse('2026-06-23T09:41:00'),
     unread: 2,
     online: true,
+    verified: true,
   },
   {
     id: '2',
@@ -52,8 +56,10 @@ const CONVERSATIONS: Conversation[] = [
     sport: 'Football',
     lastMessage: 'Great session today. We\'ll work on passing drills next time.',
     timestamp: 'Yesterday',
+    sortTime: Date.parse('2026-06-22T18:30:00'),
     unread: 0,
     online: false,
+    verified: true,
   },
   {
     id: '3',
@@ -62,8 +68,10 @@ const CONVERSATIONS: Conversation[] = [
     sport: 'Boxing',
     lastMessage: 'Can you move Tuesday\'s session to 6pm instead?',
     timestamp: 'Yesterday',
+    sortTime: Date.parse('2026-06-22T14:15:00'),
     unread: 1,
     online: true,
+    verified: true,
   },
   {
     id: '4',
@@ -71,9 +79,11 @@ const CONVERSATIONS: Conversation[] = [
     initials: 'IV',
     sport: 'Swimming',
     lastMessage: 'Your technique has improved a lot — keep it up!',
-    timestamp: 'Mon',
+    timestamp: 'Sun',
+    sortTime: Date.parse('2026-06-21T20:45:00'),
     unread: 0,
     online: false,
+    verified: true,
   },
   {
     id: '5',
@@ -81,9 +91,11 @@ const CONVERSATIONS: Conversation[] = [
     initials: 'AM',
     sport: 'Tennis',
     lastMessage: 'Booking confirmed for Saturday 10am at Lazdynai courts.',
-    timestamp: 'Mon',
+    timestamp: 'Sat',
+    sortTime: Date.parse('2026-06-20T10:00:00'),
     unread: 0,
     online: false,
+    verified: false,
   },
   {
     id: '6',
@@ -92,8 +104,10 @@ const CONVERSATIONS: Conversation[] = [
     sport: 'Running',
     lastMessage: 'New training plan uploaded to your profile. Check it out!',
     timestamp: 'Sun',
+    sortTime: Date.parse('2026-06-21T11:20:00'),
     unread: 3,
     online: false,
+    verified: false,
   },
   {
     id: '7',
@@ -101,9 +115,11 @@ const CONVERSATIONS: Conversation[] = [
     initials: 'LS',
     sport: 'CrossFit',
     lastMessage: 'Remember — rest day tomorrow. Don\'t skip it 💪',
-    timestamp: 'Sat',
+    timestamp: 'Fri',
+    sortTime: Date.parse('2026-06-19T16:50:00'),
     unread: 0,
     online: true,
+    verified: false,
   },
   {
     id: '8',
@@ -111,9 +127,11 @@ const CONVERSATIONS: Conversation[] = [
     initials: 'TŽ',
     sport: 'Basketball',
     lastMessage: 'Are you joining the group session on Friday?',
-    timestamp: 'Fri',
+    timestamp: 'Thu',
+    sortTime: Date.parse('2026-06-18T10:05:00'),
     unread: 0,
     online: false,
+    verified: false,
   },
 ];
 
@@ -126,6 +144,17 @@ function avatarColor(id: string) {
   return AVATAR_COLORS[parseInt(id, 10) % AVATAR_COLORS.length];
 }
 
+const SPORT_EMOJI: Record<string, string> = {
+  Yoga: '🧘',
+  Football: '⚽',
+  Boxing: '🥊',
+  Swimming: '🏊',
+  Tennis: '🎾',
+  Running: '🏃',
+  CrossFit: '💪',
+  Basketball: '🏀',
+};
+
 function ChatRow({ item, unread, onPress }: { item: Conversation; unread: number; onPress: () => void }) {
   const { isDarkMode } = useTheme();
   const scale = useSharedValue(1);
@@ -134,6 +163,7 @@ function ChatRow({ item, unread, onPress }: { item: Conversation; unread: number
     transform: [{ scale: scale.value }],
   }));
 
+  const ringColor = isDarkMode ? '#111827' : '#FFFFFF';
   const nameColor = isDarkMode ? '#FFFFFF' : '#111827';
   const previewColor = unread > 0
     ? (isDarkMode ? '#E5E7EB' : '#374151')
@@ -151,13 +181,23 @@ function ChatRow({ item, unread, onPress }: { item: Conversation; unread: number
           <View style={[styles.avatar, { backgroundColor: avatarColor(item.id) }]}>
             <Text style={styles.initials}>{item.initials}</Text>
           </View>
-          {item.online && <View style={styles.onlineDot} />}
+          {item.online && <View style={[styles.onlineDot, { borderColor: ringColor }]} />}
+          {SPORT_EMOJI[item.sport] && (
+            <View style={[styles.sportBadge, { backgroundColor: isDarkMode ? '#1F2937' : '#FFFFFF' }]}>
+              <Text style={styles.sportEmoji}>{SPORT_EMOJI[item.sport]}</Text>
+            </View>
+          )}
         </View>
 
         {/* Content */}
         <View style={styles.rowBody}>
           <View style={styles.rowTop}>
-            <Text style={[styles.name, { color: nameColor }]} numberOfLines={1}>{item.name}</Text>
+            <View style={styles.nameRow}>
+              <Text style={[styles.name, { color: nameColor }]} numberOfLines={1}>{item.name}</Text>
+              {item.verified && (
+                <BadgeCheck size={16} color="#FFFFFF" fill="#22C55E" strokeWidth={2.5} />
+              )}
+            </View>
             <Text style={[styles.timestamp, unread > 0 && styles.timestampUnread]}>
               {item.timestamp}
             </Text>
@@ -190,17 +230,17 @@ export default function ChatsScreen() {
     }, []),
   );
 
-  const conversations = useMemo(
-    () =>
-      query.trim()
-        ? CONVERSATIONS.filter(
-            c =>
-              c.name.toLowerCase().includes(query.toLowerCase()) ||
-              c.sport.toLowerCase().includes(query.toLowerCase()),
-          )
-        : CONVERSATIONS,
-    [query],
-  );
+  const conversations = useMemo(() => {
+    const filtered = query.trim()
+      ? CONVERSATIONS.filter(
+          c =>
+            c.name.toLowerCase().includes(query.toLowerCase()) ||
+            c.sport.toLowerCase().includes(query.toLowerCase()),
+        )
+      : CONVERSATIONS;
+
+    return [...filtered].sort((a, b) => b.sortTime - a.sortTime);
+  }, [query]);
 
   const totalUnread = CONVERSATIONS.reduce(
     (sum, c) => sum + (isConversationRead(c.id) ? 0 : c.unread),
@@ -350,7 +390,7 @@ const styles = StyleSheet.create({
   },
   onlineDot: {
     position: 'absolute',
-    bottom: 1,
+    top: 1,
     right: 1,
     width: 11,
     height: 11,
@@ -358,6 +398,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#22C55E',
     borderWidth: 2,
     borderColor: '#FFFFFF',
+  },
+  sportBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sportEmoji: {
+    fontSize: 11,
+    lineHeight: 14,
   },
   rowBody: {
     flex: 1,
@@ -370,11 +424,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+    minWidth: 0,
+  },
   name: {
     fontSize: 15,
     fontWeight: '600',
     color: '#111827',
-    flex: 1,
+    flexShrink: 1,
   },
   timestamp: {
     fontSize: 12,

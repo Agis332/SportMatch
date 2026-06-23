@@ -15,6 +15,7 @@ import {
   User,
 } from 'lucide-react-native';
 import { useState } from 'react';
+import { type Language, useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
 import {
   ScrollView,
@@ -147,7 +148,7 @@ function Divider({ colors }: { colors: Theme }) {
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
-const LANGUAGES = [
+const LANGUAGES: { code: Language; label: string }[] = [
   { code: 'en', label: 'English' },
   { code: 'lt', label: 'Lietuvių' },
 ];
@@ -155,8 +156,8 @@ const LANGUAGES = [
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { isDarkMode, toggleDarkMode } = useTheme();
+  const { language, setLanguage, t } = useLanguage();
   const colors = isDarkMode ? DARK : LIGHT;
-  const [language, setLanguage] = useState('en');
   const [langOpen, setLangOpen] = useState(false);
 
   return (
@@ -178,27 +179,27 @@ export default function SettingsScreen() {
         <Text style={[styles.profileName, { color: colors.text }]}>Augustinas Barkus</Text>
         <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>augustinas@example.com</Text>
         <TouchableOpacity style={styles.editBtn} activeOpacity={0.8}>
-          <Text style={styles.editBtnText}>Edit Profile</Text>
+          <Text style={styles.editBtnText}>{t.settings.editProfile}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Account */}
-      <Section title="Account" colors={colors}>
-        <SettingsRow icon={User} label="Profile" colors={colors} />
+      <Section title={t.settings.sections.account} colors={colors}>
+        <SettingsRow icon={User} label={t.settings.rows.profile} colors={colors} />
         <Divider colors={colors} />
-        <SettingsRow icon={Bell} label="Notifications" colors={colors} />
+        <SettingsRow icon={Bell} label={t.settings.rows.notifications} colors={colors} />
         <Divider colors={colors} />
-        <SettingsRow icon={Shield} label="Privacy" colors={colors} />
+        <SettingsRow icon={Shield} label={t.settings.rows.privacy} colors={colors} />
       </Section>
 
       {/* Preferences */}
-      <Section title="Preferences" colors={colors}>
+      <Section title={t.settings.sections.preferences} colors={colors}>
         {/* Language row — inline dropdown */}
         <TouchableOpacity style={styles.row} onPress={() => setLangOpen(v => !v)} activeOpacity={0.6}>
           <View style={[styles.rowIcon, { backgroundColor: colors.iconBg }]}>
             <Globe size={17} color={BLUE} strokeWidth={2} />
           </View>
-          <Text style={[styles.rowLabel, { color: colors.text }]}>Language</Text>
+          <Text style={[styles.rowLabel, { color: colors.text }]}>{t.settings.rows.language}</Text>
           <View style={styles.rowRight}>
             <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
               {LANGUAGES.find(l => l.code === language)?.label}
@@ -235,11 +236,11 @@ export default function SettingsScreen() {
           </View>
         )}
         <Divider colors={colors} />
-        <SettingsRow icon={MapPin} label="Location" colors={colors} />
+        <SettingsRow icon={MapPin} label={t.settings.rows.location} colors={colors} />
         <Divider colors={colors} />
         <ToggleRow
           icon={Moon}
-          label="Dark Mode"
+          label={t.settings.rows.darkMode}
           value={isDarkMode}
           onChange={toggleDarkMode}
           colors={colors}
@@ -247,21 +248,21 @@ export default function SettingsScreen() {
       </Section>
 
       {/* Support */}
-      <Section title="Support" colors={colors}>
-        <SettingsRow icon={LifeBuoy} label="Help Center" colors={colors} />
+      <Section title={t.settings.sections.support} colors={colors}>
+        <SettingsRow icon={LifeBuoy} label={t.settings.rows.helpCenter} colors={colors} />
         <Divider colors={colors} />
-        <SettingsRow icon={Star} label="Rate App" colors={colors} />
+        <SettingsRow icon={Star} label={t.settings.rows.rateApp} colors={colors} />
         <Divider colors={colors} />
-        <SettingsRow icon={Mail} label="Contact Us" colors={colors} />
+        <SettingsRow icon={Mail} label={t.settings.rows.contactUs} colors={colors} />
       </Section>
 
       {/* About */}
-      <Section title="About" colors={colors}>
-        <SettingsRow icon={Info} label="Version" value="1.0.0" colors={colors} />
+      <Section title={t.settings.sections.about} colors={colors}>
+        <SettingsRow icon={Info} label={t.settings.rows.version} value="1.0.0" colors={colors} />
         <Divider colors={colors} />
-        <SettingsRow icon={FileText} label="Terms of Service" colors={colors} />
+        <SettingsRow icon={FileText} label={t.settings.rows.termsOfService} colors={colors} />
         <Divider colors={colors} />
-        <SettingsRow icon={Shield} label="Privacy Policy" colors={colors} />
+        <SettingsRow icon={Shield} label={t.settings.rows.privacyPolicy} colors={colors} />
       </Section>
 
       {/* Log Out */}
@@ -269,7 +270,7 @@ export default function SettingsScreen() {
         style={[styles.logoutBtn, { backgroundColor: colors.logoutBg, borderColor: colors.logoutBorder }]}
         activeOpacity={0.8}>
         <LogOut size={18} color="#EF4444" strokeWidth={2} />
-        <Text style={styles.logoutText}>Log Out</Text>
+        <Text style={styles.logoutText}>{t.settings.logOut}</Text>
       </TouchableOpacity>
 
     </ScrollView>
