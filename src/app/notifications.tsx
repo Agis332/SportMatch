@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Bell, Calendar, Check, ChevronLeft, CreditCard, MessageCircle, Settings, Star, X } from 'lucide-react-native';
+import { ChevronLeft, Settings, X } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   Modal,
@@ -13,22 +13,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useNotifications, Notification } from '@/context/NotificationsContext';
 import { useTheme } from '@/context/ThemeContext';
-
-type IconComponent = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
-
-interface Notification {
-  id: string;
-  icon: IconComponent;
-  iconColor: string;
-  iconBg: string;
-  iconBgDark: string;
-  title: string;
-  description: string;
-  time: string;
-  read: boolean;
-  group: 'today' | 'earlier';
-}
 
 interface Pref {
   id: string;
@@ -46,104 +32,6 @@ const INITIAL_PREFS: Pref[] = [
   { id: 'tips',      title: 'Training Tips',           description: 'Weekly training tips and fitness insights',  enabled: false },
 ];
 
-const INITIAL: Notification[] = [
-  {
-    id: '1',
-    icon: Calendar,
-    iconColor: '#16A34A',
-    iconBg: '#DCFCE7',
-    iconBgDark: '#052E16',
-    title: 'Booking Confirmed',
-    description: 'Your session with Mantas Petrauskas on Tue, 24 Jun at 10:00 AM is confirmed.',
-    time: '2 min ago',
-    read: false,
-    group: 'today',
-  },
-  {
-    id: '2',
-    icon: MessageCircle,
-    iconColor: '#208AEF',
-    iconBg: '#EFF6FF',
-    iconBgDark: '#1E3A5F',
-    title: 'New Message',
-    description: 'Rūta Kazlauskaitė: "See you Thursday at 9am! Don\'t forget your mat 🧘"',
-    time: '15 min ago',
-    read: false,
-    group: 'today',
-  },
-  {
-    id: '3',
-    icon: Bell,
-    iconColor: '#D97706',
-    iconBg: '#FEF3C7',
-    iconBgDark: '#2D1A00',
-    title: 'Session in 1 Hour',
-    description: 'Reminder: your Boxing session with Darius Paulauskas starts at 6:00 PM today.',
-    time: '47 min ago',
-    read: false,
-    group: 'today',
-  },
-  {
-    id: '4',
-    icon: Check,
-    iconColor: '#16A34A',
-    iconBg: '#DCFCE7',
-    iconBgDark: '#052E16',
-    title: 'Request Accepted',
-    description: 'Rūta Kazlauskaitė accepted your session request for Thu, 26 Jun.',
-    time: '3 hrs ago',
-    read: true,
-    group: 'today',
-  },
-  {
-    id: '5',
-    icon: Star,
-    iconColor: '#D97706',
-    iconBg: '#FEF3C7',
-    iconBgDark: '#2D1A00',
-    title: 'Leave a Review',
-    description: 'How was your session with Mantas Petrauskas on Wed, 11 Jun? Share your feedback.',
-    time: 'Yesterday',
-    read: false,
-    group: 'earlier',
-  },
-  {
-    id: '6',
-    icon: CreditCard,
-    iconColor: '#16A34A',
-    iconBg: '#DCFCE7',
-    iconBgDark: '#052E16',
-    title: 'Payment Successful',
-    description: '€45 payment for your Yoga session with Rūta Kazlauskaitė was processed successfully.',
-    time: '2 days ago',
-    read: true,
-    group: 'earlier',
-  },
-  {
-    id: '7',
-    icon: MessageCircle,
-    iconColor: '#208AEF',
-    iconBg: '#EFF6FF',
-    iconBgDark: '#1E3A5F',
-    title: 'New Message',
-    description: 'Darius Paulauskas: "Can you move Tuesday\'s session to 6pm instead?"',
-    time: '2 days ago',
-    read: true,
-    group: 'earlier',
-  },
-  {
-    id: '8',
-    icon: Star,
-    iconColor: '#D97706',
-    iconBg: '#FEF3C7',
-    iconBgDark: '#2D1A00',
-    title: 'Leave a Review',
-    description: 'How was your Yoga session with Rūta Kazlauskaitė on Mon, 16 Jun? Let us know!',
-    time: '3 days ago',
-    read: true,
-    group: 'earlier',
-  },
-];
 
 // ─── Preferences modal ────────────────────────────────────────────────────────
 
@@ -212,7 +100,7 @@ function PrefsModal({ isDarkMode, prefs, onToggle, onClose }: {
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
-  const [notifications, setNotifications] = useState<Notification[]>(INITIAL);
+  const { notifications, markAsRead, markAllAsRead, unreadCount } = useNotifications();
   const [showPrefs, setShowPrefs] = useState(false);
   const [prefs, setPrefs] = useState<Pref[]>(INITIAL_PREFS);
 
@@ -230,16 +118,6 @@ export default function NotificationsScreen() {
   const groupLabel  = isDarkMode ? '#6B7280' : '#9CA3AF';
   const unreadBg    = isDarkMode ? '#1E3A5F18' : '#EFF6FF';
 
-  const hasUnread = notifications.some(n => !n.read);
-
-  function markRead(id: string) {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-  }
-
-  function markAllRead() {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  }
-
   const today   = notifications.filter(n => n.group === 'today');
   const earlier = notifications.filter(n => n.group === 'earlier');
 
@@ -251,9 +129,12 @@ export default function NotificationsScreen() {
       <TouchableOpacity
         style={[
           styles.notifCard,
-          { backgroundColor: notif.read ? cardBg : unreadBg, borderColor: cardBorder },
+          {
+            backgroundColor: notif.read ? cardBg : unreadBg,
+            shadowColor: isDarkMode ? '#000' : '#9CA3AF',
+          },
         ]}
-        onPress={() => markRead(notif.id)}
+        onPress={() => { markAsRead(notif.id); router.push(`/notification/${notif.id}`); }}
         activeOpacity={0.7}>
         {/* Icon */}
         <View style={[styles.iconCircle, { backgroundColor: iconBg }]}>
@@ -292,10 +173,10 @@ export default function NotificationsScreen() {
         <Text style={[styles.headerTitle, { color: textPrimary }]}>Notifications</Text>
         <View style={styles.headerRight}>
           <TouchableOpacity
-            onPress={markAllRead}
-            disabled={!hasUnread}
+            onPress={markAllAsRead}
+            disabled={unreadCount === 0}
             activeOpacity={0.7}>
-            <Text style={[styles.markAllText, { color: hasUnread ? '#208AEF' : textSub }]}>
+            <Text style={[styles.markAllText, { color: unreadCount > 0 ? '#208AEF' : textSub }]}>
               Mark all
             </Text>
           </TouchableOpacity>
@@ -316,16 +197,7 @@ export default function NotificationsScreen() {
         {today.length > 0 && (
           <View style={styles.group}>
             <Text style={[styles.groupLabel, { color: groupLabel }]}>Today</Text>
-            <View style={[styles.groupCard, { borderColor: cardBorder }]}>
-              {today.map((notif, i) => (
-                <View key={notif.id}>
-                  <NotifCard notif={notif} />
-                  {i < today.length - 1 && (
-                    <View style={[styles.divider, { backgroundColor: isDarkMode ? '#374151' : '#F3F4F6' }]} />
-                  )}
-                </View>
-              ))}
-            </View>
+            {today.map(notif => <NotifCard key={notif.id} notif={notif} />)}
           </View>
         )}
 
@@ -333,16 +205,7 @@ export default function NotificationsScreen() {
         {earlier.length > 0 && (
           <View style={styles.group}>
             <Text style={[styles.groupLabel, { color: groupLabel }]}>Earlier</Text>
-            <View style={[styles.groupCard, { borderColor: cardBorder }]}>
-              {earlier.map((notif, i) => (
-                <View key={notif.id}>
-                  <NotifCard notif={notif} />
-                  {i < earlier.length - 1 && (
-                    <View style={[styles.divider, { backgroundColor: isDarkMode ? '#374151' : '#F3F4F6' }]} />
-                  )}
-                </View>
-              ))}
-            </View>
+            {earlier.map(notif => <NotifCard key={notif.id} notif={notif} />)}
           </View>
         )}
 
@@ -397,7 +260,7 @@ const styles = StyleSheet.create({
   // Scroll
   scroll: {
     padding: 16,
-    gap: 20,
+    gap: 24,
   },
 
   // Group
@@ -410,16 +273,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.7,
     paddingHorizontal: 4,
-  },
-  groupCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
+    marginBottom: 2,
   },
 
   // Notification card
@@ -428,6 +282,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     padding: 14,
     gap: 12,
+    borderRadius: 12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    marginBottom: 6,
   },
   iconCircle: {
     width: 40,
@@ -472,10 +332,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#208AEF',
     flexShrink: 0,
     marginTop: 6,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    marginHorizontal: 14,
   },
 
   // Prefs modal

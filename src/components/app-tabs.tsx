@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { MapPin, Menu, MessageCircle, Users } from 'lucide-react-native';
+import { Calendar, MapPin, Menu, MessageCircle, Users } from 'lucide-react-native';
 import { Platform, StyleSheet } from 'react-native';
 
 import { useLanguage } from '@/context/LanguageContext';
@@ -46,6 +46,13 @@ export default function AppTabs() {
           tabBarIcon: ({ color, size }) => (
             <MessageCircle color={color} size={size} strokeWidth={1.75} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="bookings"
+        options={{
+          title: t.tabs.bookings,
+          tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} strokeWidth={1.75} />,
         }}
       />
       <Tabs.Screen

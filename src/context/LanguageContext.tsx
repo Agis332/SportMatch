@@ -7,6 +7,7 @@ export interface Translations {
     trainers: string;
     map: string;
     chats: string;
+    bookings: string;
     settings: string;
   };
   settings: {
@@ -101,7 +102,8 @@ const translations: Record<Language, Translations> = {
     tabs: {
       trainers: 'Trainers',
       map: 'Map',
-      chats: 'Chats',
+      chats: 'Inbox',
+      bookings: 'Bookings',
       settings: 'Settings',
     },
     settings: {
@@ -194,7 +196,8 @@ const translations: Record<Language, Translations> = {
     tabs: {
       trainers: 'Treneriai',
       map: 'Žemėlapis',
-      chats: 'Pokalbiai',
+      chats: 'Gautieji',
+      bookings: 'Rezervacijos',
       settings: 'Nustatymai',
     },
     settings: {
