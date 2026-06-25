@@ -35,6 +35,13 @@ const TRAINER_INFO: Record<string, { name: string; sport: string; emoji: string;
 
 const DEFAULT_TRAINER = { name: 'Trainer', sport: 'Sport', emoji: '🏅', price: 35 };
 
+const MOCK_PROFILE = {
+  firstName: 'Augustinas',
+  lastName:  'Barkus',
+  phone:     '+370 612 34567',
+  email:     'augustinas.barkus@gmail.com',
+};
+
 const TIME_SLOTS = [
   { time: '08:00', available: false },
   { time: '09:00', available: true  },
@@ -144,16 +151,18 @@ export default function BookingScreen() {
   const trainer = TRAINER_INFO[id] ?? DEFAULT_TRAINER;
   const dates   = useMemo(() => generateDates(14), []);
 
-  const [step,        setStep]        = useState<1|2|3|4>(1);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [sessionType,  setSessionType]  = useState<'individual' | 'group'>('individual');
-  const [firstName,    setFirstName]    = useState('');
-  const [lastName,     setLastName]     = useState('');
-  const [phone,        setPhone]        = useState('');
-  const [email,        setEmail]        = useState('');
-  const [notes,        setNotes]        = useState('');
-  const [booked,       setBooked]       = useState(false);
+  const [step,          setStep]          = useState<1|2|3|4>(1);
+  const [selectedDate,  setSelectedDate]  = useState<Date | null>(null);
+  const [selectedTime,  setSelectedTime]  = useState<string | null>(null);
+  const [sessionType,   setSessionType]   = useState<'individual' | 'group'>('individual');
+  const [firstName,     setFirstName]     = useState(MOCK_PROFILE.firstName);
+  const [lastName,      setLastName]      = useState(MOCK_PROFILE.lastName);
+  const [phone,         setPhone]         = useState(MOCK_PROFILE.phone);
+  const [email,         setEmail]         = useState(MOCK_PROFILE.email);
+  const [notes,         setNotes]         = useState('');
+  const [booked,        setBooked]        = useState(false);
+  const [editingDetails, setEditingDetails] = useState(false);
+  const [saveDetails,    setSaveDetails]    = useState(true);
 
   const bg          = isDarkMode ? '#111827' : '#FFFFFF';
   const cardBg      = isDarkMode ? '#1F2937' : '#F9FAFB';
@@ -378,27 +387,74 @@ export default function BookingScreen() {
           {step === 4 && (
             <View style={styles.stepContent}>
               <Text style={[styles.stepTitle, { color: textPrimary }]}>{t.booking.yourDetails}</Text>
-              <View style={styles.formGrid}>
-                <View style={styles.formRow}>
-                  <View style={styles.formHalf}>
-                    <FormInput label={t.booking.name} value={firstName} onChangeText={setFirstName}
-                      placeholder={t.booking.namePlaceholder} inputBg={inputBg} textColor={textPrimary} borderColor={borderColor} />
-                  </View>
-                  <View style={styles.formHalf}>
-                    <FormInput label={t.booking.surname} value={lastName} onChangeText={setLastName}
-                      placeholder={t.booking.surnamePlaceholder} inputBg={inputBg} textColor={textPrimary} borderColor={borderColor} />
-                  </View>
+
+              {/* Booking-as card */}
+              <View style={[styles.bookingAsCard, { backgroundColor: cardBg, borderColor }]}>
+                <View style={[styles.bookingAsAvatar, { backgroundColor: BLUE + '1A' }]}>
+                  <User size={18} color={BLUE} strokeWidth={2} />
                 </View>
-                <FormInput label={t.booking.phone} value={phone} onChangeText={setPhone}
-                  placeholder={t.booking.phonePlaceholder} keyboardType="phone-pad"
-                  inputBg={inputBg} textColor={textPrimary} borderColor={borderColor} />
-                <FormInput label={t.booking.email} value={email} onChangeText={setEmail}
-                  placeholder={t.booking.emailPlaceholder} keyboardType="email-address"
-                  inputBg={inputBg} textColor={textPrimary} borderColor={borderColor} />
-                <FormInput label={t.booking.notes} value={notes} onChangeText={setNotes}
-                  placeholder={t.booking.notesPlaceholder} multiline
-                  inputBg={inputBg} textColor={textPrimary} borderColor={borderColor} />
+                <View style={styles.bookingAsInfo}>
+                  <Text style={[styles.bookingAsHeading, { color: textSub }]}>Booking as</Text>
+                  <Text style={[styles.bookingAsName, { color: textPrimary }]}>
+                    {firstName} {lastName}
+                  </Text>
+                  <Text style={[styles.bookingAsEmail, { color: textSub }]} numberOfLines={1}>
+                    {email}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setEditingDetails(v => !v)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  activeOpacity={0.7}>
+                  <Text style={[styles.bookingAsEdit, { color: BLUE }]}>
+                    {editingDetails ? 'Done' : 'Edit'}
+                  </Text>
+                </TouchableOpacity>
               </View>
+
+              {/* Expandable form */}
+              {editingDetails && (
+                <View style={styles.formSection}>
+                  <View style={[styles.prefilledNote, { backgroundColor: BLUE + '0D' }]}>
+                    <User size={14} color={BLUE} strokeWidth={2} />
+                    <Text style={[styles.prefilledText, { color: BLUE }]}>
+                      Your details are pre-filled from your profile
+                    </Text>
+                  </View>
+                  <View style={styles.formGrid}>
+                    <View style={styles.formRow}>
+                      <View style={styles.formHalf}>
+                        <FormInput label={t.booking.name} value={firstName} onChangeText={setFirstName}
+                          placeholder={t.booking.namePlaceholder} inputBg={inputBg} textColor={textPrimary} borderColor={borderColor} />
+                      </View>
+                      <View style={styles.formHalf}>
+                        <FormInput label={t.booking.surname} value={lastName} onChangeText={setLastName}
+                          placeholder={t.booking.surnamePlaceholder} inputBg={inputBg} textColor={textPrimary} borderColor={borderColor} />
+                      </View>
+                    </View>
+                    <FormInput label={t.booking.phone} value={phone} onChangeText={setPhone}
+                      placeholder={t.booking.phonePlaceholder} keyboardType="phone-pad"
+                      inputBg={inputBg} textColor={textPrimary} borderColor={borderColor} />
+                    <FormInput label={t.booking.email} value={email} onChangeText={setEmail}
+                      placeholder={t.booking.emailPlaceholder} keyboardType="email-address"
+                      inputBg={inputBg} textColor={textPrimary} borderColor={borderColor} />
+                    <FormInput label={t.booking.notes} value={notes} onChangeText={setNotes}
+                      placeholder={t.booking.notesPlaceholder} multiline
+                      inputBg={inputBg} textColor={textPrimary} borderColor={borderColor} />
+                  </View>
+                  <TouchableOpacity
+                    style={styles.checkboxRow}
+                    onPress={() => setSaveDetails(v => !v)}
+                    activeOpacity={0.7}>
+                    <View style={[styles.checkbox, { borderColor }, saveDetails && styles.checkboxChecked]}>
+                      {saveDetails && <Check size={11} color="#FFFFFF" strokeWidth={3} />}
+                    </View>
+                    <Text style={[styles.checkboxLabel, { color: textSub }]}>
+                      Save these details for future bookings
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
 
               {/* Summary */}
               <Text style={[styles.summaryTitle, { color: textPrimary }]}>{t.booking.bookingSummary}</Text>
@@ -688,6 +744,89 @@ const styles = StyleSheet.create({
     minHeight: 90,
     textAlignVertical: 'top',
     paddingTop: 12,
+  },
+
+  // Booking-as card
+  bookingAsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+  },
+  bookingAsAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  bookingAsInfo: {
+    flex: 1,
+    gap: 2,
+    minWidth: 0,
+  },
+  bookingAsHeading: {
+    fontSize: 11,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  bookingAsName: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  bookingAsEmail: {
+    fontSize: 13,
+  },
+  bookingAsEdit: {
+    fontSize: 14,
+    fontWeight: '600',
+    flexShrink: 0,
+  },
+
+  // Expandable form section
+  formSection: {
+    gap: 14,
+  },
+  prefilledNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  prefilledText: {
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
+  },
+
+  // Checkbox
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  checkboxChecked: {
+    backgroundColor: BLUE,
+    borderColor: BLUE,
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    flex: 1,
   },
 
   // Summary

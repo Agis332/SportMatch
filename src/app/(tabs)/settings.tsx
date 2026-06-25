@@ -507,6 +507,12 @@ export default function SettingsScreen() {
 
       {/* Support */}
       <Section title={t.settings.sections.support} colors={colors}>
+        <SettingsRow
+          icon={Shield} label="Security"
+          onPress={() => router.push('/security')}
+          iconColor="#208AEF" rowIconBg={isDarkMode ? '#1E3A5F' : '#EFF6FF'}
+          colors={colors} />
+        <Divider colors={colors} />
         <SettingsRow icon={LifeBuoy} label={t.settings.rows.helpCenter}
           onPress={() => router.push('/help-center')}
           iconColor="#EA580C" rowIconBg={isDarkMode ? '#431407' : '#FFF7ED'}
@@ -529,11 +535,11 @@ export default function SettingsScreen() {
         <Divider colors={colors} />
         <SettingsRow icon={FileText} label={t.settings.rows.termsOfService}
           iconColor="#4F46E5" rowIconBg={isDarkMode ? '#1E1B4B' : '#EEF2FF'}
-          colors={colors} />
+          colors={colors} onPress={() => router.push('/terms')} />
         <Divider colors={colors} />
         <SettingsRow icon={Shield} label={t.settings.rows.privacyPolicy}
           iconColor="#DC2626" rowIconBg={isDarkMode ? '#450A0A' : '#FEF2F2'}
-          colors={colors} />
+          colors={colors} onPress={() => router.push('/privacy')} />
       </Section>
 
       {/* Log Out */}

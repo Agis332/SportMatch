@@ -1,8 +1,10 @@
 import { router } from 'expo-router';
 import { Calendar, ChevronLeft, ChevronRight, Clock, MapPin, Star, X } from 'lucide-react-native';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,6 +14,11 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/context/ThemeContext';
@@ -52,7 +59,13 @@ function generateDates(count = 14): Date[] {
   });
 }
 
-type Status = 'confirmed' | 'pending' | 'completed';
+function relativeDate(offsetDays: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return `${DAY_SHORT[d.getDay()]}, ${d.getDate()} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+type Status = 'confirmed' | 'pending' | 'completed' | 'cancelled';
 
 interface Booking {
   id: string;
@@ -73,7 +86,7 @@ const UPCOMING: Booking[] = [
     id: '1', trainerId: '1',
     trainerName: 'Mantas Petrauskas', initials: 'MP',
     sport: 'Football', emoji: '⚽',
-    date: 'Tue, 24 Jun 2026', time: '10:00 AM',
+    date: relativeDate(3), time: '10:00 AM',
     location: 'Vingis Park, Vilnius',
     status: 'confirmed', price: 35,
   },
@@ -81,7 +94,7 @@ const UPCOMING: Booking[] = [
     id: '2', trainerId: '2',
     trainerName: 'Rūta Kazlauskaitė', initials: 'RK',
     sport: 'Yoga', emoji: '🧘',
-    date: 'Thu, 26 Jun 2026', time: '9:00 AM',
+    date: relativeDate(7), time: '9:00 AM',
     location: 'Studio Zen, Vilnius',
     status: 'confirmed', price: 45,
   },
@@ -89,7 +102,7 @@ const UPCOMING: Booking[] = [
     id: '3', trainerId: '5',
     trainerName: 'Darius Paulauskas', initials: 'DP',
     sport: 'Boxing', emoji: '🥊',
-    date: 'Sat, 28 Jun 2026', time: '6:00 PM',
+    date: relativeDate(14), time: '6:00 PM',
     location: 'Fight Club Gym, Klaipėda',
     status: 'pending', price: 40,
   },
@@ -100,7 +113,7 @@ const PAST: Booking[] = [
     id: '4', trainerId: '2',
     trainerName: 'Rūta Kazlauskaitė', initials: 'RK',
     sport: 'Yoga', emoji: '🧘',
-    date: 'Mon, 16 Jun 2026', time: '9:00 AM',
+    date: relativeDate(-3), time: '9:00 AM',
     location: 'Studio Zen, Vilnius',
     status: 'completed', price: 45,
   },
@@ -108,7 +121,7 @@ const PAST: Booking[] = [
     id: '5', trainerId: '1',
     trainerName: 'Mantas Petrauskas', initials: 'MP',
     sport: 'Football', emoji: '⚽',
-    date: 'Wed, 11 Jun 2026', time: '10:00 AM',
+    date: relativeDate(-7), time: '10:00 AM',
     location: 'Vingis Park, Vilnius',
     status: 'completed', price: 35,
   },
@@ -116,7 +129,7 @@ const PAST: Booking[] = [
     id: '6', trainerId: '4',
     trainerName: 'Aistė Mikalauskaitė', initials: 'AM',
     sport: 'Tennis', emoji: '🎾',
-    date: 'Sat, 7 Jun 2026', time: '11:00 AM',
+    date: relativeDate(-14), time: '11:00 AM',
     location: 'Lazdynai Tennis Courts, Vilnius',
     status: 'completed', price: 50,
   },
@@ -128,15 +141,18 @@ const STATUS_CONFIG: Record<Status, { label: string; color: string; bg: string; 
   confirmed: { label: 'Confirmed', color: '#16A34A', bg: '#DCFCE7', darkBg: '#052E16' },
   pending:   { label: 'Pending',   color: '#D97706', bg: '#FEF3C7', darkBg: '#2D1A00' },
   completed: { label: 'Completed', color: '#6B7280', bg: '#F3F4F6', darkBg: '#1F2937' },
+  cancelled: { label: 'Cancelled', color: '#EF4444', bg: '#FEF2F2', darkBg: '#450A0A' },
 };
 
 // ─── Booking card ─────────────────────────────────────────────────────────────
 
-function BookingCard({ booking, isDarkMode, onLeaveReview, onReschedule }: {
+function BookingCard({ booking, isDarkMode, onLeaveReview, onReschedule, onCancel, onPress }: {
   booking: Booking;
   isDarkMode: boolean;
   onLeaveReview: () => void;
   onReschedule: () => void;
+  onCancel: () => void;
+  onPress: () => void;
 }) {
   const cardBg      = isDarkMode ? '#1F2937' : '#FFFFFF';
   const cardBorder  = isDarkMode ? '#374151' : '#F3F4F6';
@@ -146,10 +162,13 @@ function BookingCard({ booking, isDarkMode, onLeaveReview, onReschedule }: {
   const cancelBorder = isDarkMode ? '#4B5563' : '#E5E7EB';
 
   const status = STATUS_CONFIG[booking.status];
-  const isUpcoming = booking.status !== 'completed';
+  const isUpcoming = booking.status === 'confirmed' || booking.status === 'pending';
 
   return (
-    <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+    <TouchableOpacity
+      style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}
+      onPress={onPress}
+      activeOpacity={0.97}>
       {/* Trainer row */}
       <View style={styles.cardHeader}>
         <View style={[styles.avatar, { backgroundColor: avatarColor(booking.trainerId) }]}>
@@ -192,15 +211,16 @@ function BookingCard({ booking, isDarkMode, onLeaveReview, onReschedule }: {
         {isUpcoming ? (
           <View style={styles.footerBtns}>
             <TouchableOpacity
+              style={[styles.cancelBtn, { borderColor: cancelBorder }]}
+              onPress={onCancel}
+              activeOpacity={0.75}>
+              <Text style={[styles.cancelBtnText, { color: textSub }]}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               style={[styles.rescheduleBtn, { borderColor: BLUE }]}
               onPress={onReschedule}
               activeOpacity={0.75}>
               <Text style={styles.rescheduleBtnText}>Reschedule</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.cancelBtn, { borderColor: cancelBorder }]}
-              activeOpacity={0.75}>
-              <Text style={[styles.cancelBtnText, { color: textSub }]}>Cancel</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -209,7 +229,7 @@ function BookingCard({ booking, isDarkMode, onLeaveReview, onReschedule }: {
           </TouchableOpacity>
         )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -382,6 +402,97 @@ function RescheduleModal({ booking, isDarkMode, onClose }: {
   );
 }
 
+// ─── Cancel modal ────────────────────────────────────────────────────────────
+
+function CancelModal({ booking, isDarkMode, onConfirm, onClose }: {
+  booking: Booking;
+  isDarkMode: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  const [step, setStep] = useState<1 | 2>(1);
+
+  const sheetBg   = isDarkMode ? '#1F2937' : '#FFFFFF';
+  const textColor = isDarkMode ? '#FFFFFF' : '#111827';
+  const textSub   = isDarkMode ? '#9CA3AF' : '#6B7280';
+  const detailBg  = isDarkMode ? '#374151' : '#F9FAFB';
+  const divider   = isDarkMode ? '#374151' : '#F3F4F6';
+
+  // ── Step 1: details + policy ─────────────────────────────────────────────────
+  if (step === 1) return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={styles.overlay} onPress={onClose}>
+        <Pressable style={[styles.sheet, { backgroundColor: sheetBg }]} onPress={() => {}}>
+          <View style={styles.sheetHandle} />
+
+          <View style={styles.sheetHeader}>
+            <Text style={[styles.sheetTitle, { color: textColor }]}>Cancel Booking?</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <X size={20} color={textSub} strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={[styles.cancelDetailsCard, { backgroundColor: detailBg, borderColor: divider }]}>
+            <Text style={[styles.cancelTrainer, { color: textColor }]}>
+              {booking.emoji}  {booking.trainerName}
+            </Text>
+            <Text style={[styles.cancelDetailLine, { color: textSub }]}>📅  {booking.date}</Text>
+            <Text style={[styles.cancelDetailLine, { color: textSub }]}>🕐  {booking.time}</Text>
+            <Text style={[styles.cancelDetailLine, { color: textSub }]}>📍  {booking.location}</Text>
+          </View>
+
+          <View style={[styles.cancelPolicyBox, {
+            backgroundColor: isDarkMode ? '#2D1A00' : '#FFFBEB',
+            borderColor: '#D97706',
+          }]}>
+            <Text style={[styles.cancelPolicyText, { color: isDarkMode ? '#FCD34D' : '#92400E' }]}>
+              ⚠️  Cancellations within 24 hours may incur a fee of up to 50% of the session price.
+            </Text>
+          </View>
+
+          <TouchableOpacity style={styles.cancelConfirmBtn} onPress={() => setStep(2)} activeOpacity={0.85}>
+            <Text style={styles.submitBtnText}>Cancel Booking</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.keepBookingBtn, { borderColor: divider }]}
+            onPress={onClose}
+            activeOpacity={0.7}>
+            <Text style={[styles.keepBookingBtnText, { color: textColor }]}>Keep Booking</Text>
+          </TouchableOpacity>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+
+  // ── Step 2: final confirmation ───────────────────────────────────────────────
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={() => setStep(1)}>
+      <Pressable style={styles.overlay} onPress={() => setStep(1)}>
+        <Pressable style={[styles.sheet, { backgroundColor: sheetBg }]} onPress={() => {}}>
+          <View style={styles.sheetHandle} />
+
+          <Text style={[styles.sheetTitle, { color: textColor, textAlign: 'center' }]}>
+            Are you sure?
+          </Text>
+          <Text style={[styles.cancelFinalSub, { color: textSub }]}>
+            This cannot be undone.
+          </Text>
+
+          <TouchableOpacity style={styles.cancelConfirmBtn} onPress={onConfirm} activeOpacity={0.85}>
+            <Text style={styles.submitBtnText}>Yes, Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.keepBookingBtn, { borderColor: divider }]}
+            onPress={() => setStep(1)}
+            activeOpacity={0.7}>
+            <Text style={[styles.keepBookingBtnText, { color: textColor }]}>Go Back</Text>
+          </TouchableOpacity>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 // ─── Calendar booking card ────────────────────────────────────────────────────
 
 function CalendarBookingCard({ booking, isDarkMode }: { booking: Booking; isDarkMode: boolean }) {
@@ -393,7 +504,10 @@ function CalendarBookingCard({ booking, isDarkMode }: { booking: Booking; isDark
   const status      = STATUS_CONFIG[booking.status];
 
   return (
-    <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+    <TouchableOpacity
+      style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}
+      onPress={() => router.push(`/booking-detail/${booking.id}`)}
+      activeOpacity={0.97}>
       {/* Trainer row */}
       <View style={styles.cardHeader}>
         <View style={[styles.avatar, { backgroundColor: avatarColor(booking.trainerId) }]}>
@@ -434,7 +548,7 @@ function CalendarBookingCard({ booking, isDarkMode }: { booking: Booking; isDark
           €{booking.price}<Text style={[styles.priceSub, { color: textSub }]}>/hr</Text>
         </Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -442,7 +556,10 @@ function CalendarBookingCard({ booking, isDarkMode }: { booking: Booking; isDark
 
 function MonthCalendar({ isDarkMode }: { isDarkMode: boolean }) {
   const { width: screenWidth } = useWindowDimensions();
-  const [viewDate, setViewDate] = useState(new Date(2026, 5, 1));
+  const [viewDate, setViewDate] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   const year  = viewDate.getFullYear();
@@ -574,17 +691,50 @@ function MonthCalendar({ isDarkMode }: { isDarkMode: boolean }) {
 export default function BookingsScreen() {
   const insets = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
-  const [tab, setTab] = useState<'upcoming' | 'past' | 'calendar'>('upcoming');
-  const [reviewBooking, setReviewBooking] = useState<Booking | null>(null);
+  const { width: screenWidth } = useWindowDimensions();
+  const [activeTab, setActiveTab] = useState(0);
+  const [upcoming, setUpcoming] = useState<Booking[]>([...UPCOMING]);
+  const [past,     setPast]     = useState<Booking[]>([...PAST]);
+  const [reviewBooking,    setReviewBooking]    = useState<Booking | null>(null);
   const [rescheduleBooking, setRescheduleBooking] = useState<Booking | null>(null);
+  const [cancelBooking,    setCancelBooking]    = useState<Booking | null>(null);
 
-  const bg          = isDarkMode ? '#111827' : '#F3F4F6';
-  const textPrimary = isDarkMode ? '#FFFFFF' : '#111827';
-  const textSub     = isDarkMode ? '#9CA3AF' : '#6B7280';
-  const headerBg    = isDarkMode ? '#111827' : '#FFFFFF';
-  const borderColor = isDarkMode ? '#1F2937' : '#F3F4F6';
-  const tabBarBg    = isDarkMode ? '#1F2937' : '#FFFFFF';
-  const tabBorder   = isDarkMode ? '#374151' : '#E5E7EB';
+  function handleCancel(booking: Booking) {
+    setUpcoming(prev => prev.filter(b => b.id !== booking.id));
+    setPast(prev => [{ ...booking, status: 'cancelled' as const }, ...prev]);
+    setCancelBooking(null);
+  }
+
+  const pageRef    = useRef<ScrollView>(null);
+  const underlineX = useSharedValue(0);
+  const tabWidth   = screenWidth / 2;
+
+  const underlineStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: underlineX.value }],
+  }));
+
+  function switchTab(index: number) {
+    setActiveTab(index);
+    underlineX.value = withTiming(index * tabWidth, { duration: 200 });
+    pageRef.current?.scrollTo({ x: index * screenWidth, animated: true });
+  }
+
+  function handlePageScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
+    const page = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+    if (page !== activeTab) {
+      setActiveTab(page);
+      underlineX.value = withTiming(page * tabWidth, { duration: 150 });
+    }
+  }
+
+  const bg           = isDarkMode ? '#111827' : '#F3F4F6';
+  const textPrimary  = isDarkMode ? '#FFFFFF' : '#111827';
+  const textSub      = isDarkMode ? '#9CA3AF' : '#6B7280';
+  const headerBg     = isDarkMode ? '#111827' : '#FFFFFF';
+  const borderColor  = isDarkMode ? '#1F2937' : '#F3F4F6';
+  const tabBorderColor = isDarkMode ? '#1F2937' : '#F0F0F0';
+  const tabInactive  = isDarkMode ? '#6B7280' : '#9CA3AF';
+  const sectionColor = isDarkMode ? '#6B7280' : '#9CA3AF';
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
@@ -593,54 +743,92 @@ export default function BookingsScreen() {
         <Text style={[styles.headerTitle, { color: textPrimary }]}>My Bookings</Text>
       </View>
 
-      {/* Tabs */}
-      <View style={[styles.tabBar, { backgroundColor: tabBarBg, borderBottomColor: tabBorder }]}>
-        {(['upcoming', 'past', 'calendar'] as const).map(t => (
-          <TouchableOpacity
-            key={t}
-            style={[styles.tabItem, tab === t && styles.tabActive]}
-            onPress={() => setTab(t)}
-            activeOpacity={0.7}>
-            <Text style={[styles.tabText, { color: tab === t ? BLUE : textSub }, tab === t && styles.tabTextActive]}>
-              {t === 'upcoming' ? 'Upcoming' : t === 'past' ? 'Past' : 'Calendar'}
-            </Text>
-            {tab === t && <View style={styles.tabUnderline} />}
-          </TouchableOpacity>
-        ))}
+      {/* Tab bar */}
+      <View style={[styles.tabBar, { backgroundColor: headerBg, borderBottomColor: tabBorderColor }]}>
+        <Pressable style={[styles.tabItem, { width: tabWidth }]} onPress={() => switchTab(0)}>
+          <Text style={[styles.tabLabel, { color: activeTab === 0 ? BLUE : tabInactive }]}>
+            Bookings
+          </Text>
+        </Pressable>
+        <Pressable style={[styles.tabItem, { width: tabWidth }]} onPress={() => switchTab(1)}>
+          <Text style={[styles.tabLabel, { color: activeTab === 1 ? BLUE : tabInactive }]}>
+            Calendar
+          </Text>
+        </Pressable>
+        <Animated.View style={[styles.tabUnderline, { width: tabWidth }, underlineStyle]} />
       </View>
 
-      {/* Content */}
-      {tab === 'calendar' ? (
-        <ScrollView
-          contentContainerStyle={[styles.calScrollContent, { paddingBottom: insets.bottom + 24 }]}
-          showsVerticalScrollIndicator={false}>
-          <MonthCalendar isDarkMode={isDarkMode} />
-        </ScrollView>
-      ) : (
-        <ScrollView
-          contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}
-          showsVerticalScrollIndicator={false}>
-          {(tab === 'upcoming' ? UPCOMING : PAST).length === 0 ? (
-            <View style={styles.empty}>
-              <Calendar size={40} color={isDarkMode ? '#374151' : '#E5E7EB'} strokeWidth={1.5} />
-              <Text style={[styles.emptyTitle, { color: textPrimary }]}>No bookings yet</Text>
-              <Text style={[styles.emptySub, { color: textSub }]}>
-                Book a session with a trainer to get started.
-              </Text>
-            </View>
-          ) : (
-            (tab === 'upcoming' ? UPCOMING : PAST).map(booking => (
-              <BookingCard
-                key={booking.id}
-                booking={booking}
-                isDarkMode={isDarkMode}
-                onLeaveReview={() => setReviewBooking(booking)}
-                onReschedule={() => setRescheduleBooking(booking)}
-              />
-            ))
-          )}
-        </ScrollView>
-      )}
+      {/* Paged content */}
+      <ScrollView
+        ref={pageRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onMomentumScrollEnd={handlePageScroll}
+        style={styles.pager}>
+
+        {/* Bookings page */}
+        <View style={{ width: screenWidth, flex: 1 }}>
+          <ScrollView
+            contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}
+            showsVerticalScrollIndicator={false}>
+            {upcoming.length === 0 && past.length === 0 ? (
+              <View style={styles.empty}>
+                <Calendar size={40} color={isDarkMode ? '#374151' : '#E5E7EB'} strokeWidth={1.5} />
+                <Text style={[styles.emptyTitle, { color: textPrimary }]}>No bookings yet</Text>
+                <Text style={[styles.emptySub, { color: textSub }]}>
+                  Book a session with a trainer to get started.
+                </Text>
+              </View>
+            ) : (
+              <>
+                {upcoming.length > 0 && (
+                  <View style={styles.section}>
+                    <Text style={[styles.sectionLabel, { color: sectionColor }]}>Upcoming</Text>
+                    {upcoming.map(booking => (
+                      <BookingCard
+                        key={booking.id}
+                        booking={booking}
+                        isDarkMode={isDarkMode}
+                        onPress={() => router.push(`/booking-detail/${booking.id}`)}
+                        onLeaveReview={() => setReviewBooking(booking)}
+                        onReschedule={() => setRescheduleBooking(booking)}
+                        onCancel={() => setCancelBooking(booking)}
+                      />
+                    ))}
+                  </View>
+                )}
+                {past.length > 0 && (
+                  <View style={styles.section}>
+                    <Text style={[styles.sectionLabel, { color: sectionColor }]}>Past</Text>
+                    {past.map(booking => (
+                      <BookingCard
+                        key={booking.id}
+                        booking={booking}
+                        isDarkMode={isDarkMode}
+                        onPress={() => router.push(`/booking-detail/${booking.id}`)}
+                        onLeaveReview={() => setReviewBooking(booking)}
+                        onReschedule={() => setRescheduleBooking(booking)}
+                        onCancel={() => {}}
+                      />
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+          </ScrollView>
+        </View>
+
+        {/* Calendar page */}
+        <View style={{ width: screenWidth, flex: 1 }}>
+          <ScrollView
+            contentContainerStyle={[styles.calScrollContent, { paddingBottom: insets.bottom + 24 }]}
+            showsVerticalScrollIndicator={false}>
+            <MonthCalendar isDarkMode={isDarkMode} />
+          </ScrollView>
+        </View>
+      </ScrollView>
 
       {reviewBooking && (
         <ReviewModal
@@ -654,6 +842,14 @@ export default function BookingsScreen() {
           booking={rescheduleBooking}
           isDarkMode={isDarkMode}
           onClose={() => setRescheduleBooking(null)}
+        />
+      )}
+      {cancelBooking && (
+        <CancelModal
+          booking={cancelBooking}
+          isDarkMode={isDarkMode}
+          onConfirm={() => handleCancel(cancelBooking)}
+          onClose={() => setCancelBooking(null)}
         />
       )}
     </View>
@@ -676,39 +872,47 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Tabs
+  // Tab bar
   tabBar: {
     flexDirection: 'row',
     borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  tabItem: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 14,
     position: 'relative',
   },
-  tabActive: {},
-  tabText: {
-    fontSize: 15,
-    fontWeight: '500',
+  tabItem: {
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  tabTextActive: {
-    fontWeight: '700',
+  tabLabel: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   tabUnderline: {
     position: 'absolute',
     bottom: 0,
-    left: 20,
-    right: 20,
+    left: 0,
     height: 2,
-    borderRadius: 1,
     backgroundColor: BLUE,
+    borderRadius: 1,
+  },
+  pager: {
+    flex: 1,
   },
 
   // List
   list: {
     padding: 16,
-    gap: 14,
+    gap: 20,
+  },
+  section: {
+    gap: 12,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+    paddingHorizontal: 4,
   },
 
   // Card
@@ -853,6 +1057,53 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     paddingHorizontal: 32,
+  },
+
+  // Cancel modal
+  cancelDetailsCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 14,
+    gap: 6,
+  },
+  cancelTrainer: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  cancelDetailLine: {
+    fontSize: 14,
+  },
+  cancelPolicyBox: {
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 12,
+  },
+  cancelPolicyText: {
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '500',
+  },
+  cancelFinalSub: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: -8,
+  },
+  cancelConfirmBtn: {
+    backgroundColor: '#EF4444',
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+  keepBookingBtn: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  keepBookingBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
 
   // Modal shared
@@ -1022,9 +1273,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   calDayCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1032,8 +1283,10 @@ const styles = StyleSheet.create({
     backgroundColor: BLUE,
   },
   calDayCircleSelected: {
+    borderRadius: 18,
     borderWidth: 2,
     borderColor: BLUE,
+    backgroundColor: 'transparent',
   },
   calDayNum: {
     fontSize: 15,
