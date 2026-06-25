@@ -5,6 +5,7 @@ import {
   Check,
   ChevronRight,
   CreditCard,
+  Dumbbell,
   FileText,
   Globe,
   Heart,
@@ -360,6 +361,149 @@ const LANGUAGES: { code: Language; label: string }[] = [
   { code: 'lt', label: 'Lietuvių' },
 ];
 
+// ─── Trainer mode modal ───────────────────────────────────────────────────────
+
+const TRAINER_FEATURES = [
+  'Set your availability and working hours',
+  'Accept and manage session bookings',
+  'Manage your client relationships',
+  'Track earnings and payment history',
+];
+
+function TrainerModeModal({ isDarkMode, onClose }: { isDarkMode: boolean; onClose: () => void }) {
+  const sheetBg    = isDarkMode ? '#1F2937' : '#FFFFFF';
+  const textColor  = isDarkMode ? '#FFFFFF' : '#111827';
+  const textSub    = isDarkMode ? '#9CA3AF' : '#6B7280';
+  const featureBg  = isDarkMode ? '#374151' : '#F9FAFB';
+  const featureBorder = isDarkMode ? '#4B5563' : '#F3F4F6';
+
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={tmStyles.overlay} onPress={onClose}>
+        <Pressable style={[tmStyles.sheet, { backgroundColor: sheetBg }]} onPress={() => {}}>
+          <View style={tmStyles.handle} />
+
+          {/* Icon + title */}
+          <View style={tmStyles.iconWrap}>
+            <Dumbbell size={28} color="#EA580C" strokeWidth={2} />
+          </View>
+          <Text style={[tmStyles.title, { color: textColor }]}>Switch to Trainer Mode</Text>
+          <Text style={[tmStyles.sub, { color: textSub }]}>
+            Manage your training sessions, clients and schedule — all in one place.
+          </Text>
+
+          {/* Feature list */}
+          <View style={[tmStyles.featureList, { backgroundColor: featureBg, borderColor: featureBorder }]}>
+            {TRAINER_FEATURES.map((f, i) => (
+              <View key={i} style={tmStyles.featureRow}>
+                <View style={tmStyles.featureDot} />
+                <Text style={[tmStyles.featureText, { color: textColor }]}>{f}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Buttons */}
+          <TouchableOpacity
+            style={tmStyles.primaryBtn}
+            onPress={() => { onClose(); router.push('/trainer/dashboard'); }}
+            activeOpacity={0.85}>
+            <Text style={tmStyles.primaryBtnText}>Switch to Trainer Mode</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={tmStyles.cancelBtn} onPress={onClose} activeOpacity={0.7}>
+            <Text style={[tmStyles.cancelBtnText, { color: textSub }]}>Cancel</Text>
+          </TouchableOpacity>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+const tmStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 36,
+    gap: 14,
+    alignItems: 'center',
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D1D5DB',
+    marginBottom: 4,
+  },
+  iconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: '#FFF7ED',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  sub: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 21,
+  },
+  featureList: {
+    width: '100%',
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 16,
+    gap: 12,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  featureDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#EA580C',
+    flexShrink: 0,
+  },
+  featureText: {
+    fontSize: 14,
+    flex: 1,
+  },
+  primaryBtn: {
+    width: '100%',
+    backgroundColor: '#208AEF',
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+  primaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  cancelBtn: {
+    paddingVertical: 6,
+  },
+  cancelBtnText: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { isDarkMode, toggleDarkMode } = useTheme();
@@ -368,6 +512,7 @@ export default function SettingsScreen() {
   const [langOpen, setLangOpen] = useState(false);
   const [showRating, setShowRating] = useState(false);
   const [showContact, setShowContact] = useState(false);
+  const [showTrainerModal, setShowTrainerModal] = useState(false);
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
 
   async function pickImage() {
@@ -443,6 +588,12 @@ export default function SettingsScreen() {
           icon={Bell} label={t.settings.rows.notifications}
           onPress={() => router.push('/notifications')}
           iconColor="#F59E0B" rowIconBg={isDarkMode ? '#451A03' : '#FFFBEB'}
+          colors={colors} />
+        <Divider colors={colors} />
+        <SettingsRow
+          icon={Dumbbell} label="Switch to Trainer Mode"
+          onPress={() => setShowTrainerModal(true)}
+          iconColor="#EA580C" rowIconBg={isDarkMode ? '#431407' : '#FFF7ED'}
           colors={colors} />
       </Section>
 
@@ -557,6 +708,9 @@ export default function SettingsScreen() {
     )}
     {showContact && (
       <ContactModal isDarkMode={isDarkMode} onClose={() => setShowContact(false)} />
+    )}
+    {showTrainerModal && (
+      <TrainerModeModal isDarkMode={isDarkMode} onClose={() => setShowTrainerModal(false)} />
     )}
     </View>
   );

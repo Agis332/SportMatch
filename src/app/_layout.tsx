@@ -5,6 +5,7 @@ import { LanguageProvider } from '@/context/LanguageContext';
 import { LocationProvider } from '@/context/LocationContext';
 import { NotificationsProvider } from '@/context/NotificationsContext';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { TrainerProfileProvider } from '@/context/TrainerProfileContext';
 
 export default function RootLayout() {
   return (
@@ -12,8 +13,10 @@ export default function RootLayout() {
       <ThemeProvider>
         <LocationProvider>
           <NotificationsProvider>
-            <AnimatedSplashOverlay />
-            <Stack screenOptions={{ headerShown: false }} />
+            <TrainerProfileProvider>
+              <AnimatedSplashOverlay />
+              <Stack screenOptions={{ headerShown: false }} />
+            </TrainerProfileProvider>
           </NotificationsProvider>
         </LocationProvider>
       </ThemeProvider>

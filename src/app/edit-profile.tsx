@@ -24,7 +24,7 @@ const CITIES = [
   'Alytus', 'Marijampolė', 'Mažeikiai', 'Jonava', 'Utena',
 ];
 
-const GENDERS = ['Male', 'Female', 'Other'] as const;
+const GENDERS = ['Male', 'Female'] as const;
 type Gender = typeof GENDERS[number];
 
 // ─── Field ────────────────────────────────────────────────────────────────────
