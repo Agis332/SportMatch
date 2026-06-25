@@ -55,7 +55,7 @@ const CONVERSATIONS: Conversation[] = [
     initials: 'RK',
     sport: 'Yoga',
     lastMessage: 'See you Thursday at 9am! Don\'t forget your mat 🧘',
-    timestamp: '9:41 AM',
+    timestamp: '09:41',
     sortTime: Date.parse('2026-06-23T09:41:00'),
     unread: 2,
     online: true,

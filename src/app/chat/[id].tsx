@@ -47,35 +47,35 @@ const TRAINER_META: Record<string, TrainerMeta> = {
 
 const INITIAL_MESSAGES: Record<string, Message[]> = {
   '1': [
-    { id: '1', text: 'Hi! Looking forward to our session on Thursday 🧘', isOwn: false, time: '9:20 AM' },
-    { id: '2', text: 'Me too! Should I bring anything specific?', isOwn: true, time: '9:31 AM' },
-    { id: '3', text: 'Just your yoga mat and comfortable clothes. Water bottle too — we\'ll be doing a 60-min flow.', isOwn: false, time: '9:33 AM' },
-    { id: '4', text: 'Perfect, I have all that. What time exactly?', isOwn: true, time: '9:35 AM' },
-    { id: '5', text: 'See you Thursday at 9am! Don\'t forget your mat 🧘', isOwn: false, time: '9:41 AM' },
+    { id: '1', text: 'Hi! Looking forward to our session on Thursday 🧘', isOwn: false, time: '09:20' },
+    { id: '2', text: 'Me too! Should I bring anything specific?', isOwn: true, time: '09:31' },
+    { id: '3', text: 'Just your yoga mat and comfortable clothes. Water bottle too — we\'ll be doing a 60-min flow.', isOwn: false, time: '09:33' },
+    { id: '4', text: 'Perfect, I have all that. What time exactly?', isOwn: true, time: '09:35' },
+    { id: '5', text: 'See you Thursday at 9am! Don\'t forget your mat 🧘', isOwn: false, time: '09:41' },
   ],
   '2': [
-    { id: '1', text: 'Great work today on the drills! Your left foot is really improving.', isOwn: false, time: '5:10 PM' },
-    { id: '2', text: 'Thanks! I\'ve been practicing on my own too.', isOwn: true, time: '5:22 PM' },
-    { id: '3', text: 'It shows. Keep it up between sessions.', isOwn: false, time: '5:25 PM' },
-    { id: '4', text: 'Will do. Same time next week?', isOwn: true, time: '5:27 PM' },
-    { id: '5', text: 'Great session today. We\'ll work on passing drills next time.', isOwn: false, time: '5:30 PM' },
+    { id: '1', text: 'Great work today on the drills! Your left foot is really improving.', isOwn: false, time: '17:10' },
+    { id: '2', text: 'Thanks! I\'ve been practicing on my own too.', isOwn: true, time: '17:22' },
+    { id: '3', text: 'It shows. Keep it up between sessions.', isOwn: false, time: '17:25' },
+    { id: '4', text: 'Will do. Same time next week?', isOwn: true, time: '17:27' },
+    { id: '5', text: 'Great session today. We\'ll work on passing drills next time.', isOwn: false, time: '17:30' },
   ],
   '3': [
-    { id: '1', text: 'Hey, I wanted to check — are you okay with Tuesday\'s session as planned?', isOwn: false, time: '2:00 PM' },
-    { id: '2', text: 'Actually I have a conflict at 5pm. Can we shift?', isOwn: true, time: '2:14 PM' },
-    { id: '3', text: 'Of course! What works for you?', isOwn: false, time: '2:15 PM' },
-    { id: '4', text: '6pm would be perfect if you\'re free.', isOwn: true, time: '2:18 PM' },
-    { id: '5', text: 'Can you move Tuesday\'s session to 6pm instead?', isOwn: false, time: '2:20 PM' },
+    { id: '1', text: 'Hey, I wanted to check — are you okay with Tuesday\'s session as planned?', isOwn: false, time: '14:00' },
+    { id: '2', text: 'Actually I have a conflict at 5pm. Can we shift?', isOwn: true, time: '14:14' },
+    { id: '3', text: 'Of course! What works for you?', isOwn: false, time: '14:15' },
+    { id: '4', text: '6pm would be perfect if you\'re free.', isOwn: true, time: '14:18' },
+    { id: '5', text: 'Can you move Tuesday\'s session to 6pm instead?', isOwn: false, time: '14:20' },
   ],
 };
 
 function fallbackMessages(trainerId: string): Message[] {
   return [
-    { id: '1', text: 'Welcome! I\'m looking forward to working with you.', isOwn: false, time: '10:00 AM' },
-    { id: '2', text: 'Thank you! When can we schedule our first session?', isOwn: true, time: '10:05 AM' },
-    { id: '3', text: 'I have availability Monday and Wednesday evenings, or Saturday morning.', isOwn: false, time: '10:07 AM' },
-    { id: '4', text: 'Saturday morning works great for me!', isOwn: true, time: '10:09 AM' },
-    { id: '5', text: 'Perfect — let\'s lock in Saturday at 10am. See you then! 👍', isOwn: false, time: '10:11 AM' },
+    { id: '1', text: 'Welcome! I\'m looking forward to working with you.', isOwn: false, time: '10:00' },
+    { id: '2', text: 'Thank you! When can we schedule our first session?', isOwn: true, time: '10:05' },
+    { id: '3', text: 'I have availability Monday and Wednesday evenings, or Saturday morning.', isOwn: false, time: '10:07' },
+    { id: '4', text: 'Saturday morning works great for me!', isOwn: true, time: '10:09' },
+    { id: '5', text: 'Perfect — let\'s lock in Saturday at 10am. See you then! 👍', isOwn: false, time: '10:11' },
   ];
 }
 
@@ -90,10 +90,9 @@ function avatarColor(id: string) {
 
 function now(): string {
   const d = new Date();
-  const h = d.getHours();
+  const h = d.getHours().toString().padStart(2, '0');
   const m = d.getMinutes().toString().padStart(2, '0');
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  return `${h % 12 || 12}:${m} ${ampm}`;
+  return `${h}:${m}`;
 }
 
 export default function ChatScreen() {
