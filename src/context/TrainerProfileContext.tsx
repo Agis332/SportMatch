@@ -42,12 +42,24 @@ function makeInitialSchedule(defaultLoc: string): Schedule {
   };
 }
 
+const INITIAL_PRICES: Record<number, string> = {
+  30: '20',
+  45: '28',
+  60: '35',
+  90: '50',
+  120: '70',
+};
+
 interface TrainerProfileContextValue {
   locations: TrainingLocation[];
   addLocation: (city: string, address: string) => void;
   removeLocation: (id: string) => void;
   schedule: Schedule;
   setSchedule: Dispatch<SetStateAction<Schedule>>;
+  prices: Record<number, string>;
+  setPrices: Dispatch<SetStateAction<Record<number, string>>>;
+  sessionDuration: number;
+  setSessionDuration: Dispatch<SetStateAction<number>>;
 }
 
 const TrainerProfileContext = createContext<TrainerProfileContextValue>({
@@ -56,6 +68,10 @@ const TrainerProfileContext = createContext<TrainerProfileContextValue>({
   removeLocation: () => {},
   schedule: makeInitialSchedule(DEFAULT_LOC),
   setSchedule: () => {},
+  prices: INITIAL_PRICES,
+  setPrices: () => {},
+  sessionDuration: 60,
+  setSessionDuration: () => {},
 });
 
 let locIdCounter = 1;
@@ -64,6 +80,8 @@ function nextLocId() { return `tl_${locIdCounter++}`; }
 export function TrainerProfileProvider({ children }: { children: React.ReactNode }) {
   const [locations, setLocations] = useState<TrainingLocation[]>(INITIAL_LOCATIONS);
   const [schedule, setSchedule] = useState<Schedule>(() => makeInitialSchedule(DEFAULT_LOC));
+  const [prices, setPrices] = useState<Record<number, string>>(INITIAL_PRICES);
+  const [sessionDuration, setSessionDuration] = useState(60);
 
   function addLocation(city: string, address: string) {
     setLocations(prev => [...prev, { id: nextLocId(), city: city.trim(), address: address.trim() }]);
@@ -74,7 +92,7 @@ export function TrainerProfileProvider({ children }: { children: React.ReactNode
   }
 
   return (
-    <TrainerProfileContext.Provider value={{ locations, addLocation, removeLocation, schedule, setSchedule }}>
+    <TrainerProfileContext.Provider value={{ locations, addLocation, removeLocation, schedule, setSchedule, prices, setPrices, sessionDuration, setSessionDuration }}>
       {children}
     </TrainerProfileContext.Provider>
   );

@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { Award, BadgeCheck, ChevronLeft, Clock, Heart, MapPin, MessageCircle, Star, Users, Zap } from 'lucide-react-native';
+import { Award, BadgeCheck, ChevronLeft, Clock, Heart, MapPin, MessageCircle, Star, Timer, Users, Zap } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   ScrollView,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useTrainerProfile } from '@/context/TrainerProfileContext';
 import { useTheme } from '@/context/ThemeContext';
 
 const BLUE = '#208AEF';
@@ -159,7 +160,13 @@ export default function TrainerProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
+  const { sessionDuration } = useTrainerProfile();
   const [isFavorite, setIsFavorite] = useState(false);
+
+  function fmtSessionDuration(mins: number): string {
+    if (mins < 60) return `${mins} min`;
+    return `${mins / 60}h`;
+  }
 
   const profile = PROFILES[id] ?? DEFAULT_PROFILE;
 
@@ -248,7 +255,7 @@ export default function TrainerProfileScreen() {
             { value: `€${profile.price}`, label: 'per session', Icon: null },
             { value: String(profile.sessions), label: 'clients', Icon: Users },
             { value: `${profile.experience} yrs`, label: 'experience', Icon: null },
-            { value: profile.responseTime, label: 'response', Icon: null },
+            { value: fmtSessionDuration(sessionDuration), label: 'session', Icon: Timer },
           ].map((stat, i, arr) => (
             <View key={i} style={[styles.statCell, i < arr.length - 1 && { borderRightWidth: 1, borderRightColor: borderColor }]}>
               <View style={styles.statValueRow}>

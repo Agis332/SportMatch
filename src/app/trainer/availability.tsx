@@ -42,12 +42,14 @@ function fmtLoc(city: string, address: string) { return `${city} • ${address}`
 
 type Slot = AvailabilitySlot;
 
-const DURATIONS: { label: string; desc: string; value: number }[] = [
-  { label: '30m',  desc: '30 min session',   value: 30  },
-  { label: '45m',  desc: '45 min session',   value: 45  },
-  { label: '1h',   desc: '1 hr session',     value: 60  },
-  { label: '1.5h', desc: '1.5 hr session',   value: 90  },
-  { label: '2h',   desc: '2 hr session',     value: 120 },
+const DURATIONS: { label: string; value: number }[] = [
+  { label: '30m',  value: 30  },
+  { label: '45m',  value: 45  },
+  { label: '1h',   value: 60  },
+  { label: '1.5h', value: 90  },
+  { label: '2h',   value: 120 },
+  { label: '2.5h', value: 150 },
+  { label: '3h',   value: 180 },
 ];
 
 function minutesFromSlot(start: string, end: string): number {
@@ -446,7 +448,7 @@ const tpStyles = StyleSheet.create({
 export default function AvailabilityScreen() {
   const insets = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
-  const { locations, addLocation, schedule, setSchedule } = useTrainerProfile();
+  const { locations, addLocation, schedule, setSchedule, sessionDuration, setSessionDuration } = useTrainerProfile();
   const [picker,        setPicker]        = useState<PickerTarget | null>(null);
   const [locPicker,     setLocPicker]     = useState<{ day: string; slotId: string } | null>(null);
 
@@ -493,7 +495,7 @@ export default function AvailabilityScreen() {
         slots: [...prev[day].slots, {
           id: newId(), start: defaults.start, end: defaults.end,
           location: locations.length > 0 ? fmtLoc(locations[0].city, locations[0].address) : '',
-          notes: '', duration: 60,
+          notes: '', duration: sessionDuration,
         }],
       },
     }));
@@ -538,14 +540,15 @@ export default function AvailabilityScreen() {
     }));
   }
 
-  function setSlotDuration(day: string, slotId: string, duration: number) {
-    setSchedule(prev => ({
-      ...prev,
-      [day]: {
-        ...prev[day],
-        slots: prev[day].slots.map(s => s.id === slotId ? { ...s, duration } : s),
-      },
-    }));
+  function changeSessionDuration(value: number) {
+    setSessionDuration(value);
+    setSchedule(prev => {
+      const next = { ...prev };
+      for (const day of Object.keys(next)) {
+        next[day] = { ...next[day], slots: next[day].slots.map(s => ({ ...s, duration: value })) };
+      }
+      return next;
+    });
   }
 
   const weekMins = totalWeekMinutes(schedule);
@@ -571,6 +574,29 @@ export default function AvailabilityScreen() {
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}>
+
+        {/* ── Global session duration ── */}
+        <View style={[styles.dayCard, { backgroundColor: cardBg, borderColor }]}>
+          <View style={styles.durationInlineRow}>
+            <Text style={[styles.durationInlineLabel, { color: textSub }]}>Session:</Text>
+            <View style={styles.durationChips}>
+              {DURATIONS.map(d => {
+                const active = sessionDuration === d.value;
+                return (
+                  <TouchableOpacity
+                    key={d.value}
+                    style={[styles.durationChip, { backgroundColor: active ? BLUE : timeBtnBg }]}
+                    onPress={() => changeSessionDuration(d.value)}
+                    activeOpacity={0.7}>
+                    <Text style={[styles.durationChipText, { color: active ? '#FFFFFF' : textPrimary }]}>
+                      {d.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </View>
 
         {DAYS.map(day => {
           const config = schedule[day];
@@ -647,29 +673,6 @@ export default function AvailabilityScreen() {
                             </Text>
                             <ChevronDown size={13} color={textSub} strokeWidth={2} />
                           </TouchableOpacity>
-
-                          {/* Session Duration */}
-                          <View style={styles.durationRow}>
-                            <View style={styles.durationChips}>
-                              {DURATIONS.map(d => {
-                                const active = (slot.duration ?? 60) === d.value;
-                                return (
-                                  <TouchableOpacity
-                                    key={d.value}
-                                    style={[styles.durationChip, { backgroundColor: active ? BLUE : timeBtnBg }]}
-                                    onPress={() => setSlotDuration(day, slot.id, d.value)}
-                                    activeOpacity={0.7}>
-                                    <Text style={[styles.durationChipText, { color: active ? '#FFFFFF' : textPrimary }]}>
-                                      {d.label}
-                                    </Text>
-                                  </TouchableOpacity>
-                                );
-                              })}
-                            </View>
-                            <Text style={[styles.durationDesc, { color: textSub }]} numberOfLines={1}>
-                              {'· ' + (DURATIONS.find(d => d.value === (slot.duration ?? 60))?.desc ?? '')}
-                            </Text>
-                          </View>
 
                           {/* Notes */}
                           <TextInput
@@ -907,13 +910,21 @@ const styles = StyleSheet.create({
   slotsDivider: {
     height: StyleSheet.hairlineWidth,
   },
-  durationRow: {
+  durationInlineRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  durationInlineLabel: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   durationChips: {
+    flex: 1,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 6,
   },
   durationChip: {
@@ -924,10 +935,6 @@ const styles = StyleSheet.create({
   durationChipText: {
     fontSize: 12,
     fontWeight: '700',
-  },
-  durationDesc: {
-    fontSize: 12,
-    flex: 1,
   },
   slotsWrap: {
     paddingHorizontal: 16,
