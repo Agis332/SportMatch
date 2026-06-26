@@ -132,7 +132,7 @@ function TrainerCard({ item, isFavorite, onFavorite }: {
             <Star size={12} color="#F59E0B" fill="#F59E0B" strokeWidth={0} />
             <Text style={[styles.metaText, { color: metaColor }]}>{item.rating}</Text>
             <Text style={[styles.dot, { color: dotColor }]}>·</Text>
-            <Text style={[styles.metaText, { color: metaColor }]}>{item.price}€/hr.</Text>
+            <Text style={[styles.metaText, { color: metaColor }]}>{item.price}€/session</Text>
             <Text style={[styles.dot, { color: dotColor }]}>·</Text>
             <MapPin size={11} color={metaColor} strokeWidth={2} />
             <Text style={[styles.metaText, { color: metaColor }]}>{item.city}</Text>

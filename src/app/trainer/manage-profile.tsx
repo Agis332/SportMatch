@@ -301,18 +301,18 @@ export default function ManageProfileScreen() {
                 </View>
                 <View style={styles.formHalf}>
                   <View style={styles.fieldWrap}>
-                    <Text style={[styles.fieldLabel, { color: textPrimary }]}>Hourly Rate</Text>
+                    <Text style={[styles.fieldLabel, { color: textPrimary }]}>Session Price (€)</Text>
                     <View style={[styles.rateRow, { backgroundColor: inputBg, borderColor }]}>
                       <Text style={[styles.rateCurrency, { color: textSub }]}>€</Text>
                       <TextInput
                         style={[styles.rateInput, { color: textPrimary }]}
                         value={rate}
                         onChangeText={v => setRate(v.replace(/[^0-9]/g, ''))}
-                        placeholder="0"
+                        placeholder="35"
                         placeholderTextColor="#AAAAAA"
                         keyboardType="numeric"
                       />
-                      <Text style={[styles.rateUnit, { color: textSub }]}>/hr</Text>
+                      <Text style={[styles.rateUnit, { color: textSub }]}>/session</Text>
                     </View>
                   </View>
                 </View>

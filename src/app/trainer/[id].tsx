@@ -245,7 +245,7 @@ export default function TrainerProfileScreen() {
         {/* ── Stats ── */}
         <View style={[styles.statsRow, { backgroundColor: cardBg, borderColor }]}>
           {[
-            { value: `€${profile.price}`, label: 'per hour',  Icon: null },
+            { value: `€${profile.price}`, label: 'per session', Icon: null },
             { value: String(profile.sessions), label: 'clients', Icon: Users },
             { value: `${profile.experience} yrs`, label: 'experience', Icon: null },
             { value: profile.responseTime, label: 'response', Icon: null },
@@ -334,7 +334,7 @@ export default function TrainerProfileScreen() {
       {/* ── Sticky bottom bar ── */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12, backgroundColor: bg, borderTopColor: borderColor }]}>
         <View>
-          <Text style={[styles.bottomPrice, { color: textPrimary }]}>€{profile.price}<Text style={[styles.bottomPriceUnit, { color: textSub }]}>/hr</Text></Text>
+          <Text style={[styles.bottomPrice, { color: textPrimary }]}>€{profile.price}<Text style={[styles.bottomPriceUnit, { color: textSub }]}>/session</Text></Text>
           <Text style={[styles.bottomPriceNote, { color: textSub }]}>per session</Text>
         </View>
         <View style={styles.bottomRight}>

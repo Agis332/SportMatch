@@ -53,7 +53,7 @@ export interface Translations {
     steps: {
       date: string;
       time: string;
-      type: string;
+      location: string;
       details: string;
     };
     selectDate: string;
@@ -149,7 +149,7 @@ const translations: Record<Language, Translations> = {
       steps: {
         date: 'Date',
         time: 'Time',
-        type: 'Type',
+        location: 'Location',
         details: 'Details',
       },
       selectDate: 'Select a Date',
@@ -243,7 +243,7 @@ const translations: Record<Language, Translations> = {
       steps: {
         date: 'Data',
         time: 'Laikas',
-        type: 'Tipas',
+        location: 'Vieta',
         details: 'Duomenys',
       },
       selectDate: 'Pasirinkite datą',
