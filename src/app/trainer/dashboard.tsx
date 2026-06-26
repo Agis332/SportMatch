@@ -8,17 +8,18 @@ import { useTheme } from '@/context/ThemeContext';
 const BLUE = '#208AEF';
 
 const STATS = [
-  { label: "Today's sessions", value: '2',    unit: '',    icon: Calendar,     color: BLUE,      bg: '#EFF6FF', darkBg: '#1E3A5F' },
-  { label: 'Week earnings',    value: '€140', unit: '',    icon: DollarSign,   color: '#22C55E', bg: '#F0FDF4', darkBg: '#052E16' },
-  { label: 'Total clients',    value: '8',    unit: '',    icon: Users,        color: '#8B5CF6', bg: '#EDE9FE', darkBg: '#2E1065' },
-  { label: 'Rating',           value: '4.8',  unit: '★',   icon: Star,         color: '#F59E0B', bg: '#FFFBEB', darkBg: '#451A03' },
+  { label: "Today's sessions", value: '2',    unit: '',    icon: Calendar,     color: BLUE,      bg: '#EFF6FF', darkBg: '#1E3A5F', route: null                  },
+  { label: 'Week earnings',    value: '€140', unit: '',    icon: DollarSign,   color: '#22C55E', bg: '#F0FDF4', darkBg: '#052E16', route: '/trainer/earnings'   },
+  { label: 'Total clients',    value: '8',    unit: '',    icon: Users,        color: '#8B5CF6', bg: '#EDE9FE', darkBg: '#2E1065', route: null                  },
+  { label: 'Rating',           value: '4.8',  unit: '★',   icon: Star,         color: '#F59E0B', bg: '#FFFBEB', darkBg: '#451A03', route: '/trainer/reviews'    },
 ];
 
 const ACTIONS = [
   { label: 'Set Availability', emoji: '📅', route: '/trainer/availability' },
   { label: 'View Bookings',    emoji: '📋', route: '/bookings'             },
   { label: 'Manage Profile',   emoji: '✏️',  route: '/trainer/manage-profile' },
-  { label: 'View Earnings',    emoji: '💰', route: null                    },
+  { label: 'View Earnings',    emoji: '💰', route: '/trainer/earnings'    },
+  { label: 'My Reviews',      emoji: '⭐', route: '/trainer/reviews'     },
 ];
 
 const TODAY_SESSIONS = [
@@ -93,8 +94,8 @@ export default function TrainerDashboardScreen() {
         <View style={styles.statsGrid}>
           {STATS.map(stat => {
             const Icon = stat.icon;
-            return (
-              <View key={stat.label} style={[styles.statCard, { backgroundColor: cardBg, borderColor }]}>
+            const card = (
+              <>
                 <View style={[styles.statIcon, { backgroundColor: isDarkMode ? stat.darkBg : stat.bg }]}>
                   <Icon size={16} color={stat.color} strokeWidth={2} />
                 </View>
@@ -102,6 +103,19 @@ export default function TrainerDashboardScreen() {
                   {stat.unit}{stat.value}
                 </Text>
                 <Text style={[styles.statLabel, { color: textSub }]}>{stat.label}</Text>
+              </>
+            );
+            return stat.route ? (
+              <TouchableOpacity
+                key={stat.label}
+                style={[styles.statCard, { backgroundColor: cardBg, borderColor }]}
+                onPress={() => router.push(stat.route as never)}
+                activeOpacity={0.75}>
+                {card}
+              </TouchableOpacity>
+            ) : (
+              <View key={stat.label} style={[styles.statCard, { backgroundColor: cardBg, borderColor }]}>
+                {card}
               </View>
             );
           })}

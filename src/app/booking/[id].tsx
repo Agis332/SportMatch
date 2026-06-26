@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { Check, ChevronLeft, CreditCard, MapPin, User } from 'lucide-react-native';
+import { Check, ChevronLeft, Clock, CreditCard, MapPin, User } from 'lucide-react-native';
 import { useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -223,71 +223,91 @@ export default function BookingScreen() {
 
   // ── Step 5: Success ────────────────────────────────────────────────────────
   if (step === 5) {
+    const pm  = PAYMENT_METHODS.find(p => p.id === paymentMethodId);
+    const dur = sessionDuration < 60 ? `${sessionDuration} min` : `${sessionDuration / 60}h`;
+
     return (
-      <View style={[styles.successScreen, { backgroundColor: bg, paddingTop: insets.top, paddingBottom: insets.bottom + 24 }]}>
-        <View style={styles.successIcon}>
-          <Check size={36} color="#FFFFFF" strokeWidth={2.5} />
-        </View>
-        <Text style={[styles.successTitle, { color: textPrimary }]}>{t.booking.confirmed}</Text>
-        <Text style={[styles.successSub, { color: textSub }]}>
-          {t.booking.sessionWith} {trainer.name} {t.booking.bookedFor}{'\n'}
-          {selectedDate ? formatDate(selectedDate) : ''}{'\n'}
-          {selectedSlot ? `${selectedSlot.start} – ${selectedSlot.end}` : ''}
-        </Text>
-        <View style={[styles.successCard, { backgroundColor: cardBg, borderColor }]}>
-          {([
-            [t.booking.trainer, `${trainer.emoji} ${trainer.name}`],
-            [t.booking.sport,   trainer.sport],
-            [t.booking.date,    selectedDate ? formatDate(selectedDate) : '—'],
-            [t.booking.time,    selectedSlot ? `${selectedSlot.start} – ${selectedSlot.end}` : '—'],
-            ['Location',        selectedLocObj?.city ?? '—'],
-            [t.booking.total,   `€${totalPrice}`],
-          ] as [string, string][]).map(([label, val]) => (
-            <View key={label} style={[styles.successRow, { borderBottomColor: borderColor }]}>
-              <Text style={[styles.successRowLabel, { color: textSub }]}>{label}</Text>
-              <Text style={[styles.successRowValue, { color: textPrimary }]} numberOfLines={2}>{val}</Text>
+      <View style={[styles.successScreen, { backgroundColor: bg }]}>
+        <ScrollView
+          ref={scrollRef}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[styles.successScroll, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 28 }]}>
+
+          {/* Payment success */}
+          <View style={styles.successPaySection}>
+            <View style={styles.successIcon}>
+              <Check size={24} color="#FFFFFF" strokeWidth={3} />
             </View>
-          ))}
-        </View>
-        <View style={styles.successBtns}>
-          <TouchableOpacity
-            style={[styles.successBtnSecondary, { borderColor }]}
-            onPress={() => {
-              const pm  = PAYMENT_METHODS.find(p => p.id === paymentMethodId);
-              const dur = sessionDuration < 60
-                ? `${sessionDuration} min`
-                : `${sessionDuration / 60}h`;
-              router.push({
-                pathname: '/booking-detail/new',
-                params: {
-                  trainerId:    id,
-                  trainerName:  trainer.name,
-                  sport:        trainer.sport,
-                  emoji:        trainer.emoji,
-                  date:         selectedDate ? formatDate(selectedDate) : '',
-                  time:         selectedSlot
-                                  ? `${selectedSlot.start} – ${selectedSlot.end}`
-                                  : '',
-                  location:     selectedLocObj
-                                  ? [selectedLocObj.city, selectedLocObj.address]
-                                      .filter(Boolean).join(', ')
-                                  : '',
-                  price:        String(trainer.price),
-                  paymentMethod: pm?.label ?? 'Card',
-                  duration:     dur,
-                },
-              } as never);
-            }}
-            activeOpacity={0.85}>
-            <Text style={[styles.successBtnSecondaryText, { color: textPrimary }]}>View Booking</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.successBtn}
-            onPress={() => { router.back(); router.back(); }}
-            activeOpacity={0.85}>
-            <Text style={styles.successBtnText}>{t.booking.backToHome}</Text>
-          </TouchableOpacity>
-        </View>
+            <Text style={[styles.successTitle, { color: textPrimary }]}>Payment Successful</Text>
+          </View>
+
+          {/* Divider */}
+          <View style={[styles.successDivider, { backgroundColor: borderColor }]} />
+
+          {/* Pending confirmation */}
+          <View style={styles.pendingRow}>
+            <Clock size={15} color="#F59E0B" strokeWidth={2} style={{ marginTop: 2 }} />
+            <View style={styles.pendingTexts}>
+              <View style={styles.pendingTitleRow}>
+                <Text style={[styles.pendingStatus, { color: '#D97706' }]}>Pending</Text>
+                <Text style={[styles.pendingLabel, { color: textSub }]}>· Awaiting trainer confirmation</Text>
+              </View>
+              <Text style={[styles.pendingNote, { color: isDarkMode ? '#4B5563' : '#9CA3AF' }]}>Usually responds within 2 hours</Text>
+            </View>
+          </View>
+
+          {/* Booking summary card */}
+          <View style={[styles.successCard, { backgroundColor: cardBg, borderColor }]}>
+            {([
+              [t.booking.trainer, `${trainer.emoji} ${trainer.name}`],
+              [t.booking.sport,   trainer.sport],
+              [t.booking.date,    selectedDate ? formatDate(selectedDate) : '—'],
+              [t.booking.time,    selectedSlot ? `${selectedSlot.start} – ${selectedSlot.end}` : '—'],
+              ['Location',        selectedLocObj?.city ?? '—'],
+              [t.booking.total,   `€${totalPrice}`],
+            ] as [string, string][]).map(([label, val]) => (
+              <View key={label} style={[styles.successRow, { borderBottomColor: borderColor }]}>
+                <Text style={[styles.successRowLabel, { color: textSub }]}>{label}</Text>
+                <Text style={[styles.successRowValue, { color: textPrimary }]} numberOfLines={2}>{val}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Buttons */}
+          <View style={styles.successBtns}>
+            <TouchableOpacity
+              style={[styles.successBtnSecondary, { borderColor }]}
+              onPress={() => {
+                router.push({
+                  pathname: '/booking-detail/new',
+                  params: {
+                    trainerId:     id,
+                    trainerName:   trainer.name,
+                    sport:         trainer.sport,
+                    emoji:         trainer.emoji,
+                    date:          selectedDate ? formatDate(selectedDate) : '',
+                    time:          selectedSlot ? `${selectedSlot.start} – ${selectedSlot.end}` : '',
+                    location:      selectedLocObj
+                                     ? [selectedLocObj.city, selectedLocObj.address].filter(Boolean).join(', ')
+                                     : '',
+                    price:         String(trainer.price),
+                    paymentMethod: pm?.label ?? 'Card',
+                    duration:      dur,
+                  },
+                } as never);
+              }}
+              activeOpacity={0.85}>
+              <Text style={[styles.successBtnSecondaryText, { color: textPrimary }]}>View Booking</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.successBtn}
+              onPress={() => { router.back(); router.back(); }}
+              activeOpacity={0.85}>
+              <Text style={styles.successBtnText}>{t.booking.backToHome}</Text>
+            </TouchableOpacity>
+          </View>
+
+        </ScrollView>
       </View>
     );
   }
@@ -772,17 +792,25 @@ const styles = StyleSheet.create({
   actionBtnText:   { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 
   // Step 5 — success
-  successScreen:   { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28, gap: 16 },
-  successIcon:     { width: 80, height: 80, borderRadius: 40, backgroundColor: '#22C55E', justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
-  successTitle:    { fontSize: 24, fontWeight: '700', textAlign: 'center' },
-  successSub:      { fontSize: 15, textAlign: 'center', lineHeight: 22 },
-  successCard:     { width: '100%', borderRadius: 16, borderWidth: 1, marginTop: 8 },
-  successRow:      { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
-  successRowLabel: { fontSize: 14 },
-  successRowValue: { fontSize: 14, fontWeight: '600', maxWidth: '55%', textAlign: 'right' },
-  successBtns:     { width: '100%', gap: 10, marginTop: 8 },
-  successBtn:      { backgroundColor: BLUE, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
-  successBtnText:  { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  successScreen:    { flex: 1 },
+  successScroll:    { paddingHorizontal: 24, gap: 20 },
+  successPaySection:{ alignItems: 'center', gap: 10 },
+  successIcon:      { width: 48, height: 48, borderRadius: 24, backgroundColor: '#22C55E', justifyContent: 'center', alignItems: 'center' },
+  successTitle:     { fontSize: 20, fontWeight: '700', textAlign: 'center' },
+  successDivider:   { height: StyleSheet.hairlineWidth },
+  pendingRow:       { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  pendingTexts:     { flex: 1, gap: 3 },
+  pendingTitleRow:  { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
+  pendingStatus:    { fontSize: 14, fontWeight: '700' },
+  pendingLabel:     { fontSize: 14 },
+  pendingNote:      { fontSize: 13 },
+  successCard:      { borderRadius: 16, borderWidth: 1 },
+  successRow:       { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  successRowLabel:  { fontSize: 14 },
+  successRowValue:  { fontSize: 14, fontWeight: '600', maxWidth: '55%', textAlign: 'right' },
+  successBtns:      { gap: 10 },
+  successBtn:       { backgroundColor: BLUE, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
+  successBtnText:   { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
   successBtnSecondary:    { borderRadius: 14, borderWidth: 1, paddingVertical: 14, alignItems: 'center' },
   successBtnSecondaryText:{ fontSize: 16, fontWeight: '600' },
 });

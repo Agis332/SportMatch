@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Calendar, ChevronLeft, ChevronRight, Clock, MapPin, Star, X } from 'lucide-react-native';
+import { Calendar, ChevronLeft, ChevronRight, Clock, Info, MapPin, Star, X } from 'lucide-react-native';
 import { useRef, useState } from 'react';
 import {
   Modal,
@@ -441,12 +441,16 @@ function CancelModal({ booking, isDarkMode, onConfirm, onClose }: {
             <Text style={[styles.cancelDetailLine, { color: textSub }]}>📍  {booking.location}</Text>
           </View>
 
-          <View style={[styles.cancelPolicyBox, {
-            backgroundColor: isDarkMode ? '#2D1A00' : '#FFFBEB',
-            borderColor: '#D97706',
+          <View style={[styles.cancelRefundBox, {
+            backgroundColor: isDarkMode ? '#1F2937' : '#F9FAFB',
+            borderColor:     isDarkMode ? '#374151' : '#E5E7EB',
           }]}>
-            <Text style={[styles.cancelPolicyText, { color: isDarkMode ? '#FCD34D' : '#92400E' }]}>
-              ⚠️  Cancellations within 24 hours may incur a fee of up to 50% of the session price.
+            <View style={styles.cancelRefundHeader}>
+              <Info size={14} color={isDarkMode ? '#9CA3AF' : '#6B7280'} strokeWidth={2} />
+              <Text style={[styles.cancelRefundTitle, { color: isDarkMode ? '#D1D5DB' : '#374151' }]}>Refund Policy</Text>
+            </View>
+            <Text style={[styles.cancelRefundText, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>
+              Full refund will be processed within 3–5 business days. If cancelled within 2 hours of session start time, only 50% refund will be issued.
             </Text>
           </View>
 
@@ -476,6 +480,9 @@ function CancelModal({ booking, isDarkMode, onConfirm, onClose }: {
           </Text>
           <Text style={[styles.cancelFinalSub, { color: textSub }]}>
             This cannot be undone.
+          </Text>
+          <Text style={[styles.cancelRefundReminder, { color: textSub }]}>
+            Refund will be processed within 3–5 business days.
           </Text>
 
           <TouchableOpacity style={styles.cancelConfirmBtn} onPress={onConfirm} activeOpacity={0.85}>
@@ -1074,20 +1081,34 @@ const styles = StyleSheet.create({
   cancelDetailLine: {
     fontSize: 14,
   },
-  cancelPolicyBox: {
+  cancelRefundBox: {
     borderRadius: 10,
     borderWidth: 1,
     padding: 12,
+    gap: 6,
   },
-  cancelPolicyText: {
+  cancelRefundHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  cancelRefundTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  cancelRefundText: {
     fontSize: 13,
     lineHeight: 19,
-    fontWeight: '500',
   },
   cancelFinalSub: {
     fontSize: 14,
     textAlign: 'center',
     marginTop: -8,
+  },
+  cancelRefundReminder: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: -4,
   },
   cancelConfirmBtn: {
     backgroundColor: '#EF4444',

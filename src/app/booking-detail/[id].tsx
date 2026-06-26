@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { BadgeCheck, Calendar, CheckCircle, ChevronLeft, ChevronRight, Clock, CreditCard, MapPin, Timer, User, X } from 'lucide-react-native';
+import { BadgeCheck, Calendar, CheckCircle, ChevronLeft, ChevronRight, Clock, CreditCard, Info, MapPin, Timer, User, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -126,12 +126,16 @@ function CancelModal({ booking, isDarkMode, onConfirm, onClose }: {
             <Text style={[styles.cancelDetailLine, { color: textSub }]}>🕐  {booking.time}</Text>
             <Text style={[styles.cancelDetailLine, { color: textSub }]}>📍  {booking.location}</Text>
           </View>
-          <View style={[styles.cancelPolicyBox, {
-            backgroundColor: isDarkMode ? '#2D1A00' : '#FFFBEB',
-            borderColor: '#D97706',
+          <View style={[styles.cancelRefundBox, {
+            backgroundColor: isDarkMode ? '#1F2937' : '#F9FAFB',
+            borderColor:     isDarkMode ? '#374151' : '#E5E7EB',
           }]}>
-            <Text style={[styles.cancelPolicyText, { color: isDarkMode ? '#FCD34D' : '#92400E' }]}>
-              ⚠️  Cancellations within 24 hours may incur a fee of up to 50% of the session price.
+            <View style={styles.cancelRefundHeader}>
+              <Info size={14} color={isDarkMode ? '#9CA3AF' : '#6B7280'} strokeWidth={2} />
+              <Text style={[styles.cancelRefundTitle, { color: isDarkMode ? '#D1D5DB' : '#374151' }]}>Refund Policy</Text>
+            </View>
+            <Text style={[styles.cancelRefundText, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>
+              Full refund will be processed within 3–5 business days. If cancelled within 2 hours of session start time, only 50% refund will be issued.
             </Text>
           </View>
           <TouchableOpacity style={styles.cancelConfirmBtn} onPress={() => setStep(2)} activeOpacity={0.85}>
@@ -152,6 +156,9 @@ function CancelModal({ booking, isDarkMode, onConfirm, onClose }: {
           <View style={styles.sheetHandle} />
           <Text style={[styles.sheetTitle, { color: textColor, textAlign: 'center' }]}>Are you sure?</Text>
           <Text style={[styles.cancelFinalSub, { color: textSub }]}>This cannot be undone.</Text>
+          <Text style={[styles.cancelRefundReminder, { color: textSub }]}>
+            Refund will be processed within 3–5 business days.
+          </Text>
           <TouchableOpacity style={styles.cancelConfirmBtn} onPress={onConfirm} activeOpacity={0.85}>
             <Text style={styles.modalBtnText}>Yes, Cancel</Text>
           </TouchableOpacity>
@@ -292,7 +299,7 @@ export default function BookingDetailScreen() {
         date:        params.date     ?? '',
         time:        params.time     ?? '',
         location:    params.location ?? '',
-        status:      'confirmed',
+        status:      'pending',
         price:       Number(params.price) || 0,
       };
     }
@@ -409,23 +416,6 @@ export default function BookingDetailScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 100 }]}>
 
-        {/* Status badge */}
-        <View style={styles.statusRow}>
-          <View style={[styles.statusBadge, { backgroundColor: isDarkMode ? status.darkBg : status.bg }]}>
-            <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
-          </View>
-        </View>
-
-        {/* Reschedule success banner */}
-        {rescheduleSuccess && (
-          <View style={styles.successBanner}>
-            <CheckCircle size={16} color="#16A34A" strokeWidth={2} />
-            <Text style={styles.successBannerText}>
-              Session rescheduled to {booking.date} at {booking.time}
-            </Text>
-          </View>
-        )}
-
         {/* Trainer */}
         <TouchableOpacity
           style={[styles.card, { backgroundColor: cardBg, borderColor }]}
@@ -450,6 +440,37 @@ export default function BookingDetailScreen() {
           </View>
           <ChevronRight size={18} color={textSub} strokeWidth={2} />
         </TouchableOpacity>
+
+        {/* Status badge (non-pending) */}
+        {booking.status !== 'pending' && (
+          <View style={styles.statusRow}>
+            <View style={[styles.statusBadge, { backgroundColor: isDarkMode ? status.darkBg : status.bg }]}>
+              <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Pending info bar */}
+        {booking.status === 'pending' && (
+          <View style={[styles.pendingBar, { backgroundColor: isDarkMode ? '#2D1A00' : '#FFF8E7' }]}>
+            <View style={styles.pendingBarBadge}>
+              <Text style={[styles.pendingBarBadgeText, { color: isDarkMode ? '#FCD34D' : '#D97706' }]}>Pending</Text>
+            </View>
+            <Text style={[styles.pendingBarText, { color: isDarkMode ? '#FCD34D' : '#D97706' }]}>
+              Awaiting trainer confirmation
+            </Text>
+          </View>
+        )}
+
+        {/* Reschedule success banner */}
+        {rescheduleSuccess && (
+          <View style={styles.successBanner}>
+            <CheckCircle size={16} color="#16A34A" strokeWidth={2} />
+            <Text style={styles.successBannerText}>
+              Session rescheduled to {booking.date} at {booking.time}
+            </Text>
+          </View>
+        )}
 
         {/* Session details */}
         <View style={[styles.section, { backgroundColor: cardBg, borderColor }]}>
@@ -494,7 +515,13 @@ export default function BookingDetailScreen() {
           <View style={[styles.rowDivider, { backgroundColor: divColor }]} />
           <PaymentRow label="Service fee" value={`€${serviceFee.toFixed(2)}`} />
           <View style={[styles.payTotalDivider, { backgroundColor: divColor }]} />
-          <PaymentRow label="Total paid" value={`€${total.toFixed(2)}`} total />
+          <View style={styles.payRow}>
+            <Text style={[styles.payLabel, { color: textPrimary, fontWeight: '700' }]}>Total paid</Text>
+            <View style={styles.payTotalRight}>
+              <Text style={[styles.payValue, { color: BLUE, fontWeight: '700', fontSize: 16 }]}>{`€${total.toFixed(2)}`}</Text>
+              <Text style={styles.paySuccessLabel}>✓ Payment successful</Text>
+            </View>
+          </View>
           <View style={[styles.rowDivider, { backgroundColor: divColor }]} />
           <View style={styles.payRow}>
             <Text style={[styles.payLabel, { color: textSub }]}>Payment method</Text>
@@ -629,6 +656,46 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
+  statusDotRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#F59E0B',
+  },
+  statusDotText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+
+  // Pending bar
+  pendingBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  pendingBarBadge: {
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    backgroundColor: 'rgba(217,119,6,0.12)',
+    flexShrink: 0,
+  },
+  pendingBarBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  pendingBarText: {
+    fontSize: 13,
+    flex: 1,
+  },
 
   // Success banner
   successBanner: {
@@ -754,6 +821,15 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginVertical: 2,
   },
+  payTotalRight: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  paySuccessLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#22C55E',
+  },
   payMethodRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -864,20 +940,34 @@ const styles = StyleSheet.create({
   cancelDetailLine: {
     fontSize: 14,
   },
-  cancelPolicyBox: {
+  cancelRefundBox: {
     borderRadius: 10,
     borderWidth: 1,
     padding: 12,
+    gap: 6,
   },
-  cancelPolicyText: {
+  cancelRefundHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  cancelRefundTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  cancelRefundText: {
     fontSize: 13,
     lineHeight: 19,
-    fontWeight: '500',
   },
   cancelFinalSub: {
     fontSize: 14,
     textAlign: 'center',
     marginTop: -8,
+  },
+  cancelRefundReminder: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: -4,
   },
   cancelConfirmBtn: {
     backgroundColor: '#EF4444',
