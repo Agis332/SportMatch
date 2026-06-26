@@ -1,7 +1,22 @@
-import { CalendarDays, Clock, MapPin } from 'lucide-react-native';
+import { Calendar, CalendarDays, Clock, MapPin, Tag, Users } from 'lucide-react-native';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  LayoutAnimation,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  UIManager,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+if (Platform.OS === 'android') {
+  UIManager.setLayoutAnimationEnabledExperimental?.(true);
+}
 
 import { useTheme } from '@/context/ThemeContext';
 
@@ -22,21 +37,23 @@ interface Session {
   location: string;
   status: 'confirmed' | 'pending' | 'completed' | 'cancelled';
   type: 'Individual' | 'Group';
+  price: string;
 }
 
-const SESSIONS: Session[] = [
+const INITIAL_SESSIONS: Session[] = [
   {
     id: '1',
     client: 'Jonas Kazlauskas',
     initials: 'JK',
     color: '#B5C9E4',
     sport: '⚽ Football',
-    date: 'Today',
+    date: 'Today, Jun 26',
     time: '10:00',
     duration: '60 min',
     location: 'Vingis Park, Vilnius',
     status: 'confirmed',
     type: 'Individual',
+    price: '€45',
   },
   {
     id: '2',
@@ -44,12 +61,13 @@ const SESSIONS: Session[] = [
     initials: 'MP',
     color: '#C8DDB5',
     sport: '🏃 Running',
-    date: 'Today',
+    date: 'Today, Jun 26',
     time: '14:00',
     duration: '45 min',
     location: 'Sereikiškių Park, Vilnius',
     status: 'confirmed',
     type: 'Individual',
+    price: '€35',
   },
   {
     id: '3',
@@ -57,12 +75,13 @@ const SESSIONS: Session[] = [
     initials: 'TB',
     color: '#D4B5E4',
     sport: '⚽ Football',
-    date: 'Tomorrow',
+    date: 'Tomorrow, Jun 27',
     time: '09:00',
     duration: '60 min',
     location: 'Vingis Park, Vilnius',
     status: 'pending',
     type: 'Individual',
+    price: '€45',
   },
   {
     id: '4',
@@ -76,6 +95,7 @@ const SESSIONS: Session[] = [
     location: 'Sereikiškių Park, Vilnius',
     status: 'confirmed',
     type: 'Individual',
+    price: '€35',
   },
   {
     id: '5',
@@ -89,6 +109,7 @@ const SESSIONS: Session[] = [
     location: 'FitSpace Gym, Vilnius',
     status: 'confirmed',
     type: 'Group',
+    price: '€30',
   },
   {
     id: '6',
@@ -102,6 +123,7 @@ const SESSIONS: Session[] = [
     location: 'Vingis Park, Vilnius',
     status: 'pending',
     type: 'Individual',
+    price: '€45',
   },
   {
     id: '7',
@@ -115,6 +137,7 @@ const SESSIONS: Session[] = [
     location: 'FitSpace Gym, Vilnius',
     status: 'completed',
     type: 'Group',
+    price: '€30',
   },
   {
     id: '8',
@@ -128,6 +151,7 @@ const SESSIONS: Session[] = [
     location: 'Vingis Park, Vilnius',
     status: 'completed',
     type: 'Group',
+    price: '€30',
   },
   {
     id: '9',
@@ -141,6 +165,7 @@ const SESSIONS: Session[] = [
     location: 'Sereikiškių Park, Vilnius',
     status: 'completed',
     type: 'Individual',
+    price: '€35',
   },
   {
     id: '10',
@@ -154,6 +179,7 @@ const SESSIONS: Session[] = [
     location: 'FitSpace Gym, Vilnius',
     status: 'cancelled',
     type: 'Group',
+    price: '€30',
   },
 ];
 
@@ -168,7 +194,9 @@ export default function SessionsScreen() {
   const insets         = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
 
-  const [filter, setFilter] = useState<Filter>('upcoming');
+  const [sessions,  setSessions]  = useState<Session[]>(INITIAL_SESSIONS);
+  const [filter,    setFilter]    = useState<Filter>('upcoming');
+  const [selected,  setSelected]  = useState<Session | null>(null);
 
   const bg          = isDarkMode ? '#111827' : '#F3F4F6';
   const headerBg    = isDarkMode ? '#111827' : '#FFFFFF';
@@ -177,10 +205,30 @@ export default function SessionsScreen() {
   const textPrimary = isDarkMode ? '#FFFFFF' : '#111827';
   const textSub     = isDarkMode ? '#9CA3AF' : '#6B7280';
   const divColor    = isDarkMode ? '#374151' : '#F3F4F6';
+  const sheetBg     = isDarkMode ? '#1F2937' : '#FFFFFF';
+  const detailBg    = isDarkMode ? '#111827' : '#F9FAFB';
 
-  const upcoming = SESSIONS.filter(s => s.status === 'confirmed' || s.status === 'pending');
-  const past     = SESSIONS.filter(s => s.status === 'completed' || s.status === 'cancelled');
+  const upcoming = sessions.filter(s => s.status === 'confirmed' || s.status === 'pending');
+  const past     = sessions.filter(s => s.status === 'completed' || s.status === 'cancelled');
   const list     = filter === 'upcoming' ? upcoming : past;
+
+  function handleConfirm() {
+    if (!selected) return;
+    setSessions(prev =>
+      prev.map(s => s.id === selected.id ? { ...s, status: 'confirmed' } : s),
+    );
+    setSelected(null);
+  }
+
+  function handleDecline() {
+    if (!selected) return;
+    const id = selected.id;
+    setSelected(null);
+    setTimeout(() => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setSessions(prev => prev.filter(s => s.id !== id));
+    }, 300);
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
@@ -224,19 +272,25 @@ export default function SessionsScreen() {
           </View>
         ) : (
           list.map(session => {
-            const meta = STATUS_META[session.status];
+            const isPending = session.status === 'pending';
+            const meta      = STATUS_META[session.status];
             return (
               <TouchableOpacity
                 key={session.id}
-                style={[styles.sessionCard, { backgroundColor: cardBg, borderColor }]}
-                activeOpacity={0.75}>
+                style={[
+                  styles.sessionCard,
+                  { backgroundColor: cardBg, borderColor },
+                  isPending && { borderColor: '#F59E0B', borderWidth: 1.5 },
+                ]}
+                onPress={() => isPending ? setSelected(session) : undefined}
+                activeOpacity={isPending ? 0.75 : 1}>
 
                 {/* Date + status row */}
                 <View style={styles.sessionTop}>
                   <View style={styles.dateRow}>
-                    <Clock size={13} color={session.status === 'pending' ? AMBER : BLUE} strokeWidth={2} />
+                    <Clock size={13} color={isPending ? AMBER : BLUE} strokeWidth={2} />
                     <Text style={[styles.sessionDate, { color: textSub }]}>{session.date}</Text>
-                    <Text style={[styles.sessionTime, { color: textPrimary }]}>{session.time}</Text>
+                    <Text style={[styles.sessionTime, { color: isPending ? '#D97706' : textPrimary }]}>{session.time}</Text>
                     <Text style={[styles.sessionDuration, { color: textSub }]}>· {session.duration}</Text>
                   </View>
                   <View style={[styles.statusBadge, { backgroundColor: meta.bg }]}>
@@ -244,7 +298,7 @@ export default function SessionsScreen() {
                   </View>
                 </View>
 
-                <View style={[styles.divider, { backgroundColor: divColor }]} />
+                <View style={[styles.divider, { backgroundColor: isPending ? '#FEF3C7' : divColor }]} />
 
                 {/* Client info */}
                 <View style={styles.sessionBody}>
@@ -266,6 +320,11 @@ export default function SessionsScreen() {
                       </Text>
                     </View>
                   </View>
+                  {isPending && (
+                    <View style={styles.tapHint}>
+                      <Text style={styles.tapHintText}>Tap to review</Text>
+                    </View>
+                  )}
                 </View>
 
               </TouchableOpacity>
@@ -274,6 +333,75 @@ export default function SessionsScreen() {
         )}
 
       </ScrollView>
+
+      {/* Booking request modal */}
+      <Modal
+        visible={!!selected}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelected(null)}>
+        <Pressable style={styles.overlay} onPress={() => setSelected(null)}>
+          <Pressable style={[styles.sheet, { backgroundColor: sheetBg }]} onPress={() => {}}>
+            <View style={styles.sheetHandle} />
+
+            <View style={styles.modalTitleRow}>
+              <View style={styles.pendingDot} />
+              <Text style={[styles.modalTitle, { color: textPrimary }]}>New Booking Request</Text>
+            </View>
+
+            {selected && (
+              <>
+                <View style={styles.modalClient}>
+                  <View style={[styles.modalAvatar, { backgroundColor: selected.color }]}>
+                    <Text style={styles.modalInitials}>{selected.initials}</Text>
+                  </View>
+                  <View style={styles.modalClientInfo}>
+                    <Text style={[styles.modalClientName, { color: textPrimary }]}>{selected.client}</Text>
+                    <Text style={[styles.modalSport, { color: textSub }]}>{selected.sport}</Text>
+                  </View>
+                </View>
+
+                <View style={[styles.detailCard, { backgroundColor: detailBg, borderColor }]}>
+                  {([
+                    { icon: Calendar, label: 'Date',     value: selected.date                         },
+                    { icon: Clock,    label: 'Time',     value: `${selected.time} · ${selected.duration}` },
+                    { icon: MapPin,   label: 'Location', value: selected.location                      },
+                    { icon: Users,    label: 'Type',     value: selected.type                          },
+                    { icon: Tag,      label: 'Price',    value: selected.price                         },
+                  ] as const).map(({ icon: Icon, label, value }, i, arr) => (
+                    <View key={label}>
+                      <View style={styles.detailRow}>
+                        <Icon size={14} color={textSub} strokeWidth={2} />
+                        <Text style={[styles.detailLabel, { color: textSub }]}>{label}</Text>
+                        <Text style={[styles.detailValue, { color: textPrimary }]}>{value}</Text>
+                      </View>
+                      {i < arr.length - 1 && (
+                        <View style={[styles.detailDivider, { backgroundColor: isDarkMode ? '#374151' : '#F3F4F6' }]} />
+                      )}
+                    </View>
+                  ))}
+                </View>
+
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    style={styles.declineBtn}
+                    onPress={handleDecline}
+                    activeOpacity={0.7}>
+                    <Text style={styles.declineBtnText}>Decline</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.confirmBtn}
+                    onPress={handleConfirm}
+                    activeOpacity={0.85}>
+                    <Text style={styles.confirmBtnText}>Confirm Session</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
     </View>
   );
 }
@@ -424,6 +552,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
+  tapHint: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexShrink: 0,
+  },
+  tapHintText: {
+    fontSize: 11,
+    color: '#D97706',
+    fontWeight: '500',
+  },
+
   emptyCard: {
     borderRadius: 16,
     borderWidth: 1,
@@ -432,5 +573,125 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
+  },
+
+  // Modal
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 36,
+    gap: 20,
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D1D5DB',
+    alignSelf: 'center',
+    marginBottom: 4,
+  },
+  modalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pendingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#F59E0B',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  modalClient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  modalAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  modalInitials: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#374151',
+  },
+  modalClientInfo: {
+    gap: 4,
+  },
+  modalClientName: {
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  modalSport: {
+    fontSize: 14,
+  },
+  detailCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  detailLabel: {
+    fontSize: 14,
+    width: 62,
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  detailDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginHorizontal: 14,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  declineBtn: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: '#DC2626',
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+  declineBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  confirmBtn: {
+    flex: 2,
+    backgroundColor: BLUE,
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+  confirmBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });
