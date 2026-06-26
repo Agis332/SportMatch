@@ -405,7 +405,7 @@ function TrainerModeModal({ isDarkMode, onClose }: { isDarkMode: boolean; onClos
           {/* Buttons */}
           <TouchableOpacity
             style={tmStyles.primaryBtn}
-            onPress={() => { onClose(); router.push('/trainer/dashboard'); }}
+            onPress={() => { onClose(); router.push('/trainer-mode'); }}
             activeOpacity={0.85}>
             <Text style={tmStyles.primaryBtnText}>Switch to Trainer Mode</Text>
           </TouchableOpacity>
