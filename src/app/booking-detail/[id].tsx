@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { TRAINERS } from '@/data/trainers';
 import { useTheme } from '@/context/ThemeContext';
 
 const BLUE = '#208AEF';
@@ -260,11 +261,44 @@ function RescheduleModal({ booking, isDarkMode, onConfirm, onClose }: {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function BookingDetailScreen() {
-  const { id }   = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{
+    id:            string;
+    trainerId?:    string;
+    trainerName?:  string;
+    sport?:        string;
+    emoji?:        string;
+    date?:         string;
+    time?:         string;
+    location?:     string;
+    price?:        string;
+    paymentMethod?: string;
+    duration?:     string;
+  }>();
+  const { id }   = params;
   const insets   = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
 
-  const [booking, setBooking]                     = useState<Booking | undefined>(() => ALL_BOOKINGS.find(b => b.id === id));
+  const [booking, setBooking] = useState<Booking | undefined>(() => {
+    if (id === 'new' && params.trainerId) {
+      const nameWords = (params.trainerName ?? '').split(' ').filter(Boolean);
+      const initials  = nameWords.map(w => w[0].toUpperCase()).slice(0, 2).join('');
+      return {
+        id:          'new',
+        trainerId:   params.trainerId,
+        trainerName: params.trainerName ?? '',
+        initials,
+        sport:       params.sport    ?? '',
+        emoji:       params.emoji    ?? '🏅',
+        date:        params.date     ?? '',
+        time:        params.time     ?? '',
+        location:    params.location ?? '',
+        status:      'confirmed',
+        price:       Number(params.price) || 0,
+      };
+    }
+    return ALL_BOOKINGS.find(b => b.id === id);
+  });
+
   const [showCancel, setShowCancel]               = useState(false);
   const [showReschedule, setShowReschedule]       = useState(false);
   const [rescheduleSuccess, setRescheduleSuccess] = useState(false);
@@ -276,7 +310,21 @@ export default function BookingDetailScreen() {
     }
   }, [rescheduleSuccess]);
 
-  const extras = booking ? (BOOKING_EXTRAS[booking.id] ?? null) : null;
+  const extras = (() => {
+    if (!booking) return null;
+    if (id === 'new' && params.trainerId) {
+      const t = TRAINERS.find(tr => tr.id === params.trainerId);
+      return {
+        sessionType:   'Individual',
+        duration:      params.duration     ?? '1h',
+        address:       params.location     ?? '',
+        paymentMethod: params.paymentMethod ?? 'Card',
+        verified:      t?.verified ?? false,
+        rating:        t?.rating   ?? 4.8,
+      };
+    }
+    return BOOKING_EXTRAS[booking.id] ?? null;
+  })();
 
   const bg          = isDarkMode ? '#111827' : '#F3F4F6';
   const headerBg    = isDarkMode ? '#111827' : '#FFFFFF';
