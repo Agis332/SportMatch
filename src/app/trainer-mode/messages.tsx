@@ -211,14 +211,6 @@ function ChatRow({ item, unread, onPress }: { item: Conversation; unread: number
             <Text style={styles.initials}>{item.initials}</Text>
           </View>
           {item.online && <View style={[styles.onlineDot, { borderColor: ringColor }]} />}
-          {SPORT_EMOJI[item.sport] && (
-            <View style={[styles.sportBadge, {
-              backgroundColor: isDarkMode ? '#1F2937' : '#FFFFFF',
-              borderColor:     isDarkMode ? '#4B5563' : '#E0E0E0',
-            }]}>
-              <Text style={styles.sportEmoji}>{SPORT_EMOJI[item.sport]}</Text>
-            </View>
-          )}
         </View>
 
         <View style={styles.rowBody}>
@@ -515,7 +507,7 @@ export default function TrainerMessagesScreen() {
               <ChatRow
                 item={item}
                 unread={isConversationRead(item.id) ? 0 : item.unread}
-                onPress={() => router.push(`/chat/${item.id}`)}
+                onPress={() => router.push(`/chat/${item.id}?mode=trainer`)}
               />
             )}
           />

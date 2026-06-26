@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { CalendarDays, House, MessageSquare, User } from 'lucide-react-native';
+import { CalendarDays, House, MessageCircle, User } from 'lucide-react-native';
 import { Platform, StyleSheet } from 'react-native';
 
 import { useTheme } from '@/context/ThemeContext';
@@ -44,8 +44,8 @@ export default function TrainerModeLayout() {
       <Tabs.Screen
         name="messages"
         options={{
-          title: 'Messages',
-          tabBarIcon: ({ color, size }) => <MessageSquare color={color} size={size} strokeWidth={1.75} />,
+          title: 'Inbox',
+          tabBarIcon: ({ color, size }) => <MessageCircle color={color} size={size} strokeWidth={1.75} />,
         }}
       />
       <Tabs.Screen

@@ -1,12 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { markConversationRead } from '@/store/read-conversations';
 import { useTheme } from '@/context/ThemeContext';
-import { ChevronLeft, Send } from 'lucide-react-native';
+import { ChevronLeft, Mail, Phone, Send, User } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -33,6 +34,26 @@ interface TrainerMeta {
   initials: string;
   online: boolean;
 }
+
+interface ClientMeta {
+  name: string;
+  initials: string;
+  email: string;
+  phone: string;
+  memberSince: string;
+  online: boolean;
+}
+
+const CLIENT_META: Record<string, ClientMeta> = {
+  '1': { name: 'Jonas Kazlauskas',  initials: 'JK', email: 'jonas.k@gmail.com',      phone: '+370 612 34567', memberSince: 'Mar 2025', online: true  },
+  '2': { name: 'Marta Petraitytė',  initials: 'MP', email: 'marta.p@gmail.com',      phone: '+370 698 76543', memberSince: 'Jan 2026', online: true  },
+  '3': { name: 'Tomas Butkus',      initials: 'TB', email: 'tomas.b@gmail.com',      phone: '+370 655 11223', memberSince: 'Apr 2025', online: false },
+  '4': { name: 'Rasa Mockutė',      initials: 'RM', email: 'rasa.m@gmail.com',       phone: '+370 679 44556', memberSince: 'Feb 2026', online: false },
+  '5': { name: 'Viktorija Paulė',   initials: 'VP', email: 'viktorija.p@gmail.com',  phone: '+370 620 98765', memberSince: 'Nov 2024', online: false },
+  '6': { name: 'Eglė Jankutė',     initials: 'EJ', email: 'egle.j@gmail.com',       phone: '+370 647 33210', memberSince: 'May 2025', online: true  },
+  '7': { name: 'Laurynas Grigas',   initials: 'LG', email: 'laurynas.g@gmail.com',   phone: '+370 601 87654', memberSince: 'Jun 2024', online: false },
+  '8': { name: 'Kristina Vaitkutė', initials: 'KV', email: 'kristina.v@gmail.com',   phone: '+370 635 22109', memberSince: 'Aug 2025', online: false },
+};
 
 const TRAINER_META: Record<string, TrainerMeta> = {
   '1': { name: 'Rūta Kazlauskaitė', sport: 'Yoga', initials: 'RK', online: true },
@@ -96,10 +117,12 @@ function now(): string {
 }
 
 export default function ChatScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, mode } = useLocalSearchParams<{ id: string; mode?: string }>();
   const insets = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
   const listRef = useRef<FlatList>(null);
+
+  const isTrainerMode = mode === 'trainer';
 
   const screenBg = isDarkMode ? '#111827' : '#FFFFFF';
   const headerBg = isDarkMode ? '#1F2937' : '#FFFFFF';
@@ -113,18 +136,17 @@ export default function ChatScreen() {
   const inputTextColor = isDarkMode ? '#FFFFFF' : '#111827';
   const receivedBubbleBg = isDarkMode ? '#374151' : '#F3F4F6';
   const receivedTextColor = isDarkMode ? '#FFFFFF' : '#111827';
+  const sheetBg  = isDarkMode ? '#1F2937' : '#FFFFFF';
+  const textSub  = isDarkMode ? '#9CA3AF' : '#6B7280';
+  const divColor = isDarkMode ? '#374151' : '#F3F4F6';
 
-  const trainer = TRAINER_META[id] ?? {
-    name: 'Trainer',
-    sport: '',
-    initials: '?',
-    online: false,
-  };
+  const trainer    = TRAINER_META[id] ?? { name: 'Trainer',  sport: '', initials: '?', online: false };
+  const clientInfo = CLIENT_META[id]  ?? { name: 'Client', initials: '?', email: '', phone: '', memberSince: '', online: false };
+  const person     = isTrainerMode ? clientInfo : trainer;
 
-  const [messages, setMessages] = useState<Message[]>(
-    INITIAL_MESSAGES[id] ?? fallbackMessages(id),
-  );
-  const [inputText, setInputText] = useState('');
+  const [messages,        setMessages]        = useState<Message[]>(INITIAL_MESSAGES[id] ?? fallbackMessages(id));
+  const [inputText,       setInputText]       = useState('');
+  const [showClientInfo,  setShowClientInfo]  = useState(false);
 
   useEffect(() => {
     markConversationRead(id);
@@ -169,17 +191,17 @@ export default function ChatScreen() {
 
         <TouchableOpacity
           style={styles.headerTrainer}
-          onPress={() => router.push(`/trainer/${id}`)}
+          onPress={() => isTrainerMode ? setShowClientInfo(true) : router.push(`/trainer/${id}`)}
           activeOpacity={0.7}>
           <View style={[styles.headerAvatar, { backgroundColor: avatarColor(id) }]}>
-            <Text style={styles.headerInitials}>{trainer.initials}</Text>
+            <Text style={styles.headerInitials}>{person.initials}</Text>
           </View>
           <View style={styles.headerInfo}>
-            <Text style={[styles.headerName, { color: headerTextColor }]} numberOfLines={1}>{trainer.name}</Text>
+            <Text style={[styles.headerName, { color: headerTextColor }]} numberOfLines={1}>{person.name}</Text>
             <View style={styles.headerSubRow}>
-              {trainer.online && <View style={styles.onlineDot} />}
+              {person.online && <View style={styles.onlineDot} />}
               <Text style={[styles.headerSub, { color: headerSubColor }]}>
-                {trainer.online ? 'Active now' : trainer.sport}
+                {person.online ? 'Active now' : (isTrainerMode ? 'Client' : (trainer as TrainerMeta).sport)}
               </Text>
             </View>
           </View>
@@ -207,7 +229,7 @@ export default function ChatScreen() {
                   <View style={styles.bubbleAvatarSlot}>
                     {showAvatar && (
                       <View style={[styles.bubbleAvatar, { backgroundColor: avatarColor(id) }]}>
-                        <Text style={styles.bubbleAvatarText}>{trainer.initials}</Text>
+                        <Text style={styles.bubbleAvatarText}>{person.initials}</Text>
                       </View>
                     )}
                   </View>
@@ -258,6 +280,70 @@ export default function ChatScreen() {
         </Pressable>
       </View>
     </KeyboardAvoidingView>
+      {/* Client info modal (trainer mode only) */}
+      <Modal
+        visible={showClientInfo}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowClientInfo(false)}>
+        <Pressable style={styles.overlay} onPress={() => setShowClientInfo(false)}>
+          <Pressable style={[styles.infoSheet, { backgroundColor: sheetBg }]} onPress={() => {}}>
+            <View style={styles.sheetHandle} />
+
+            {/* Avatar + name */}
+            <View style={styles.infoHeader}>
+              <View style={[styles.infoAvatar, { backgroundColor: avatarColor(id) }]}>
+                <Text style={styles.infoInitials}>{clientInfo.initials}</Text>
+              </View>
+              <Text style={[styles.infoName, { color: headerTextColor }]}>{clientInfo.name}</Text>
+              <View style={[styles.memberBadge, { backgroundColor: isDarkMode ? '#1E3A5F' : '#EFF6FF' }]}>
+                <Text style={[styles.memberBadgeText, { color: BLUE }]}>Member since {clientInfo.memberSince}</Text>
+              </View>
+            </View>
+
+            {/* Contact rows */}
+            <View style={[styles.infoCard, { borderColor: divColor }]}>
+              <View style={styles.infoRow}>
+                <View style={[styles.infoIcon, { backgroundColor: isDarkMode ? '#1E3A5F' : '#EFF6FF' }]}>
+                  <Mail size={15} color={BLUE} strokeWidth={2} />
+                </View>
+                <View style={styles.infoText}>
+                  <Text style={[styles.infoLabel, { color: textSub }]}>Email</Text>
+                  <Text style={[styles.infoValue, { color: headerTextColor }]}>{clientInfo.email}</Text>
+                </View>
+              </View>
+              <View style={[styles.infoDivider, { backgroundColor: divColor }]} />
+              <View style={styles.infoRow}>
+                <View style={[styles.infoIcon, { backgroundColor: isDarkMode ? '#052E16' : '#F0FDF4' }]}>
+                  <Phone size={15} color="#22C55E" strokeWidth={2} />
+                </View>
+                <View style={styles.infoText}>
+                  <Text style={[styles.infoLabel, { color: textSub }]}>Phone</Text>
+                  <Text style={[styles.infoValue, { color: headerTextColor }]}>{clientInfo.phone}</Text>
+                </View>
+              </View>
+              <View style={[styles.infoDivider, { backgroundColor: divColor }]} />
+              <View style={styles.infoRow}>
+                <View style={[styles.infoIcon, { backgroundColor: isDarkMode ? '#2E1065' : '#EDE9FE' }]}>
+                  <User size={15} color="#8B5CF6" strokeWidth={2} />
+                </View>
+                <View style={styles.infoText}>
+                  <Text style={[styles.infoLabel, { color: textSub }]}>Member since</Text>
+                  <Text style={[styles.infoValue, { color: headerTextColor }]}>{clientInfo.memberSince}</Text>
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.closeBtn}
+              onPress={() => setShowClientInfo(false)}
+              activeOpacity={0.7}>
+              <Text style={[styles.closeBtnText, { color: textSub }]}>Close</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
     </View>
   );
 }
@@ -436,5 +522,102 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: {
     backgroundColor: '#D1D5DB',
+  },
+
+  // Client info modal
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  infoSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 36,
+    gap: 20,
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D1D5DB',
+    alignSelf: 'center',
+    marginBottom: 4,
+  },
+  infoHeader: {
+    alignItems: 'center',
+    gap: 10,
+  },
+  infoAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  infoInitials: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#374151',
+  },
+  infoName: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  memberBadge: {
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  memberBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  infoCard: {
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    gap: 12,
+  },
+  infoIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  infoText: {
+    flex: 1,
+    gap: 2,
+  },
+  infoLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  infoValue: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  infoDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginHorizontal: 14,
+  },
+  closeBtn: {
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: -4,
+  },
+  closeBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
