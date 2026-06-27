@@ -1,6 +1,6 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, MessageSquare } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -178,6 +178,7 @@ function Stars({ rating, size, emptyColor }: { rating: number; size: number; emp
 export default function TrainerReviewsScreen() {
   const insets         = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
+  const { clientId }   = useLocalSearchParams<{ clientId?: string }>();
 
   const [filter,       setFilter]       = useState<Filter>('all');
   const [replyTarget,  setReplyTarget]  = useState<string | null>(null);
@@ -187,6 +188,18 @@ export default function TrainerReviewsScreen() {
     REVIEWS.forEach(r => { if (r.reply) init[r.id] = r.reply; });
     return init;
   });
+
+  const scrollRef    = useRef<ScrollView>(null);
+  const cardYPos     = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!clientId) return;
+    const timer = setTimeout(() => {
+      const y = cardYPos.current[clientId];
+      if (y !== undefined) scrollRef.current?.scrollTo({ y, animated: true });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [clientId]);
 
   const bg            = isDarkMode ? '#111827' : '#F3F4F6';
   const headerBg      = isDarkMode ? '#111827' : '#FFFFFF';
@@ -238,6 +251,7 @@ export default function TrainerReviewsScreen() {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}>
 
@@ -287,9 +301,17 @@ export default function TrainerReviewsScreen() {
           </View>
         ) : (
           filteredReviews.map(r => {
-            const hasReply = !!replies[r.id];
+            const hasReply    = !!replies[r.id];
+            const isHighlight = r.id === clientId;
             return (
-              <View key={r.id} style={[styles.reviewCard, { backgroundColor: cardBg, borderColor }]}>
+              <View
+                key={r.id}
+                onLayout={e => { cardYPos.current[r.id] = e.nativeEvent.layout.y; }}
+                style={[
+                  styles.reviewCard,
+                  { backgroundColor: cardBg, borderColor },
+                  isHighlight && styles.reviewCardHighlight,
+                ]}>
 
                 {/* Header */}
                 <View style={styles.reviewHeader}>
@@ -507,6 +529,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 16,
     gap: 12,
+  },
+  reviewCardHighlight: {
+    borderColor: BLUE,
+    borderWidth: 2,
   },
   reviewHeader: {
     flexDirection: 'row',

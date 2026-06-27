@@ -1,13 +1,16 @@
 import { router } from 'expo-router';
 import {
+  BadgeCheck,
   Calendar,
+  CalendarClock,
   ChevronRight,
   Clock,
   DollarSign,
-  Dumbbell,
+  Heart,
   MapPin,
   Star,
   Tag,
+  UserCircle,
   Users,
 } from 'lucide-react-native';
 import { useState } from 'react';
@@ -33,19 +36,23 @@ if (Platform.OS === 'android') {
 
 const BLUE = '#208AEF';
 
+const TRAINER_NAME     = 'Mantas Petrauskas';
+const TRAINER_VERIFIED = true;
+
 const STATS = [
-  { label: "Today's sessions", value: '3',    icon: Calendar,   color: BLUE,      bg: '#EFF6FF', darkBg: '#1E3A5F', route: '/trainer-mode/sessions' },
+  { label: "Today's sessions", value: '2',    icon: Calendar,   color: BLUE,      bg: '#EFF6FF', darkBg: '#1E3A5F', route: '/trainer-mode/sessions?tab=upcoming' },
   { label: 'Week earnings',    value: '€140', icon: DollarSign, color: '#22C55E', bg: '#F0FDF4', darkBg: '#052E16', route: '/trainer/earnings'       },
-  { label: 'Total clients',    value: '8',    icon: Users,      color: '#8B5CF6', bg: '#EDE9FE', darkBg: '#2E1065', route: null                      },
+  { label: 'Total clients',    value: '4',    icon: Users,      color: '#8B5CF6', bg: '#EDE9FE', darkBg: '#2E1065', route: '/trainer-mode/sessions?tab=past' },
   { label: 'Rating',           value: '4.8',  icon: Star,       color: '#F59E0B', bg: '#FFFBEB', darkBg: '#451A03', route: '/trainer/reviews'        },
 ];
 
 const ACTIONS = [
-  { label: 'Set Availability', emoji: '📅', route: '/trainer/availability'   },
-  { label: 'Manage Profile',   emoji: '✏️',  route: '/trainer/manage-profile' },
-  { label: 'View Earnings',    emoji: '💰', route: '/trainer/earnings'       },
-  { label: 'My Reviews',       emoji: '⭐', route: '/trainer/reviews'        },
+  { label: 'Manage Profile',   icon: UserCircle,    color: '#8B5CF6', route: '/trainer/manage-profile' as const, modal: false },
+  { label: 'Set Availability', icon: CalendarClock, color: BLUE,      route: '/trainer/availability'   as const, modal: false },
+  { label: 'Saved by Clients', icon: Heart,         color: '#F43F5E', route: '/trainer-mode/saved-by-clients' as const, modal: false },
+  { label: 'My Reviews',       icon: Star,          color: '#F59E0B', route: '/trainer/reviews'        as const, modal: false },
 ];
+
 
 type SessionStatus = 'confirmed' | 'pending';
 
@@ -71,7 +78,7 @@ const INITIAL_SESSIONS: Session[] = [
     initials: 'JK',
     color: '#B5C9E4',
     sport: '⚽ Football',
-    date: 'Today, Jun 26',
+    date: 'Today, Jun 27',
     time: '10:00',
     duration: '60 min',
     location: 'Vingis Park, Vilnius',
@@ -85,7 +92,7 @@ const INITIAL_SESSIONS: Session[] = [
     initials: 'MP',
     color: '#C8DDB5',
     sport: '🏃 Running',
-    date: 'Today, Jun 26',
+    date: 'Today, Jun 27',
     time: '14:00',
     duration: '45 min',
     location: 'Sereikiškių Park, Vilnius',
@@ -99,7 +106,7 @@ const INITIAL_SESSIONS: Session[] = [
     initials: 'TB',
     color: '#D4B5E4',
     sport: '⚽ Football',
-    date: 'Today, Jun 26',
+    date: 'Today, Jun 27',
     time: '16:00',
     duration: '60 min',
     location: 'Vingis Park, Vilnius',
@@ -113,8 +120,8 @@ export default function TrainerHomeScreen() {
   const insets         = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
 
-  const [sessions,    setSessions]    = useState<Session[]>(INITIAL_SESSIONS);
-  const [selected,    setSelected]    = useState<Session | null>(null);
+  const [sessions, setSessions] = useState<Session[]>(INITIAL_SESSIONS);
+  const [selected, setSelected] = useState<Session | null>(null);
 
   const bg          = isDarkMode ? '#111827' : '#F3F4F6';
   const headerBg    = isDarkMode ? '#111827' : '#FFFFFF';
@@ -148,11 +155,13 @@ export default function TrainerHomeScreen() {
     <View style={[styles.container, { backgroundColor: bg }]}>
 
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: headerBg, borderBottomColor: borderColor }]}>
-        <Dumbbell size={16} color={BLUE} strokeWidth={2} />
-        <Text style={[styles.headerTitle, { color: textPrimary }]}>Trainer Mode</Text>
-        <View style={styles.modeBadge}>
-          <Text style={styles.modeBadgeText}>PRO</Text>
+      <View style={[styles.header, { paddingTop: insets.top + 4, backgroundColor: headerBg, borderBottomColor: borderColor }]}>
+        <View style={styles.headerNameRow}>
+          <Text style={styles.headerLabel}>Trainer: </Text>
+          <Text style={styles.headerName}>{TRAINER_NAME}</Text>
+          {TRAINER_VERIFIED && (
+            <BadgeCheck size={20} color="#FFFFFF" fill="#22C55E" strokeWidth={2.5} />
+          )}
         </View>
       </View>
 
@@ -206,21 +215,24 @@ export default function TrainerHomeScreen() {
         {/* Quick actions */}
         <Text style={[styles.sectionLabel, { color: textSub }]}>QUICK ACTIONS</Text>
         <View style={[styles.actionsCard, { backgroundColor: cardBg, borderColor }]}>
-          {ACTIONS.map((action, i) => (
-            <View key={action.label}>
-              <TouchableOpacity
-                style={styles.actionRow}
-                onPress={() => router.push(action.route as never)}
-                activeOpacity={0.7}>
-                <Text style={styles.actionEmoji}>{action.emoji}</Text>
-                <Text style={[styles.actionLabel, { color: textPrimary }]}>{action.label}</Text>
-                <ChevronRight size={16} color={textSub} strokeWidth={2} />
-              </TouchableOpacity>
-              {i < ACTIONS.length - 1 && (
-                <View style={[styles.divider, { backgroundColor: divColor }]} />
-              )}
-            </View>
-          ))}
+          {ACTIONS.map((action, i) => {
+            const Icon = action.icon;
+            return (
+              <View key={action.label}>
+                <TouchableOpacity
+                  style={styles.actionRow}
+                  onPress={() => router.push(action.route as never)}
+                  activeOpacity={0.7}>
+                  <Icon size={20} color={action.color} strokeWidth={2} />
+                  <Text style={[styles.actionLabel, { color: textPrimary }]}>{action.label}</Text>
+                  <ChevronRight size={16} color={textSub} strokeWidth={2} />
+                </TouchableOpacity>
+                {i < ACTIONS.length - 1 && (
+                  <View style={[styles.divider, { backgroundColor: divColor }]} />
+                )}
+              </View>
+            );
+          })}
         </View>
 
         {/* Today's sessions */}
@@ -369,28 +381,26 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
 
   header: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
     paddingHorizontal: 20,
-    paddingBottom: 14,
+    paddingBottom: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '700',
+  headerNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  modeBadge: {
-    backgroundColor: BLUE,
-    borderRadius: 5,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  modeBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
+  headerLabel: {
+    fontSize: 18,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    color: '#6B7280',
+  },
+  headerName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginRight: 4,
   },
 
   scroll: {
@@ -474,11 +484,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     gap: 14,
-  },
-  actionEmoji: {
-    fontSize: 19,
-    width: 26,
-    textAlign: 'center',
   },
   actionLabel: {
     flex: 1,
@@ -712,4 +717,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
+
 });

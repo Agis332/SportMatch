@@ -1,6 +1,6 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { CalendarDays, Clock, MapPin } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   LayoutAnimation,
   Platform,
@@ -205,8 +205,17 @@ export default function SessionsScreen() {
   const insets         = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
 
+  const { tab } = useLocalSearchParams<{ tab?: string }>();
+
   const [sessions, setSessions] = useState<Session[]>(INITIAL_SESSIONS);
-  const [filter,   setFilter]   = useState<Filter>('new');
+  const [filter,   setFilter]   = useState<Filter>(
+    tab === 'past' ? 'past' : tab === 'upcoming' ? 'upcoming' : 'new',
+  );
+
+  useEffect(() => {
+    if (tab === 'past')     setFilter('past');
+    if (tab === 'upcoming') setFilter('upcoming');
+  }, [tab]);
 
   const bg          = isDarkMode ? '#111827' : '#F3F4F6';
   const headerBg    = isDarkMode ? '#111827' : '#FFFFFF';
@@ -339,11 +348,19 @@ export default function SessionsScreen() {
       <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: headerBg, borderBottomColor: borderColor }]}>
         <CalendarDays size={18} color={BLUE} strokeWidth={2} />
         <Text style={[styles.headerTitle, { color: textPrimary }]}>Sessions</Text>
-        {newOrders.length > 0 && (
-          <View style={[styles.countBadge, { backgroundColor: isDarkMode ? '#422006' : '#FEF3C7' }]}>
-            <Text style={[styles.countText, { color: AMBER }]}>{newOrders.length} new</Text>
-          </View>
-        )}
+        <View style={[styles.headerCountPill, {
+          backgroundColor: filter === 'new' ? '#FFF3E0' : filter === 'upcoming' ? '#F0FDF4' : '#EBF5FF',
+        }]}>
+          <Text style={[styles.headerCountText, {
+            color: filter === 'new' ? AMBER : filter === 'upcoming' ? '#22C55E' : BLUE,
+          }]}>
+            {filter === 'new'
+              ? `${newOrders.length} new requests`
+              : filter === 'upcoming'
+              ? `${upcoming.length} clients awaiting`
+              : `${past.length} clients trained`}
+          </Text>
+        </View>
       </View>
 
       <ScrollView
@@ -377,13 +394,20 @@ export default function SessionsScreen() {
             style={[styles.tab, filter === 'upcoming' && { backgroundColor: cardBg }]}
             onPress={() => setFilter('upcoming')}
             activeOpacity={0.7}>
-            <Text style={[
-              styles.tabText,
-              { color: filter === 'upcoming' ? textPrimary : textSub },
-              filter === 'upcoming' && styles.tabTextActive,
-            ]}>
-              Upcoming
-            </Text>
+            <View style={styles.tabInner}>
+              <Text style={[
+                styles.tabText,
+                { color: filter === 'upcoming' ? textPrimary : textSub },
+                filter === 'upcoming' && styles.tabTextActive,
+              ]}>
+                Upcoming
+              </Text>
+              {upcoming.length > 0 && (
+                <View style={styles.upcomingBadge}>
+                  <Text style={styles.upcomingBadgeText}>{upcoming.length}</Text>
+                </View>
+              )}
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -425,6 +449,16 @@ export default function SessionsScreen() {
               )}
             </>
           )
+        ) : filter === 'past' ? (
+          flatList.length === 0 ? (
+            <View style={[styles.emptyCard, { backgroundColor: cardBg, borderColor }]}>
+              <Text style={[styles.emptyText, { color: textSub }]}>No past sessions</Text>
+            </View>
+          ) : (
+            <>
+              {flatList.map(renderCard)}
+            </>
+          )
         ) : (
           flatList.length === 0 ? (
             <View style={[styles.emptyCard, { backgroundColor: cardBg, borderColor }]}>
@@ -457,14 +491,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     flex: 1,
   },
-  countBadge: {
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+  headerCountPill: {
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
   },
-  countText: {
+  headerCountText: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 
   scroll: {
@@ -506,6 +540,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   newBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  upcomingBadge: {
+    backgroundColor: '#22C55E',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  upcomingBadgeText: {
     fontSize: 10,
     fontWeight: '700',
     color: '#FFFFFF',

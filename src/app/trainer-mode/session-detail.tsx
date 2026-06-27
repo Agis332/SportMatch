@@ -106,6 +106,9 @@ export default function SessionDetailScreen() {
   const [showCancelModal,   setShowCancelModal]   = useState(false);
   const [showSuggestModal,  setShowSuggestModal]  = useState(false);
 
+  const [showNoReviewModal, setShowNoReviewModal] = useState(false);
+  const [reminderSent,      setReminderSent]      = useState(false);
+
   const [suggestDate, setSuggestDate] = useState<Date | null>(null);
   const [suggestSlot, setSuggestSlot] = useState<{ start: string; end: string } | null>(null);
   const [note,        setNote]        = useState('');
@@ -243,8 +246,17 @@ export default function SessionDetailScreen() {
           </View>
         )}
 
-        {status === 'completed' && SESSIONS_WITH_REVIEW.has(params.id) && (
-          <TouchableOpacity style={styles.blueOutlineBtn} activeOpacity={0.7}>
+        {status === 'completed' && (
+          <TouchableOpacity
+            style={styles.blueOutlineBtn}
+            onPress={() => {
+              if (SESSIONS_WITH_REVIEW.has(params.id)) {
+                router.push(`/trainer/reviews?clientId=${params.id}`);
+              } else {
+                setShowNoReviewModal(true);
+              }
+            }}
+            activeOpacity={0.7}>
             <Text style={styles.blueOutlineBtnText}>View Review</Text>
           </TouchableOpacity>
         )}
@@ -448,6 +460,36 @@ export default function SessionDetailScreen() {
                 <Text style={styles.sendBtnText}>Send Suggestion</Text>
               </TouchableOpacity>
             </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ── No review yet ───────────────────────────────────────────── */}
+      <Modal visible={showNoReviewModal} transparent animationType="fade" onRequestClose={() => setShowNoReviewModal(false)}>
+        <Pressable style={styles.overlay} onPress={() => { setShowNoReviewModal(false); setReminderSent(false); }}>
+          <Pressable style={[styles.alertSheet, { backgroundColor: sheetBg }]} onPress={() => {}}>
+            <Text style={[styles.alertTitle, { color: textPrimary }]}>No review yet</Text>
+            <Text style={[styles.alertBody, { color: textSub }]}>
+              {params.client} hasn't left a review for this session yet.
+            </Text>
+            {reminderSent ? (
+              <View style={[styles.reminderSentBox, { backgroundColor: isDarkMode ? '#1E3A5F' : '#EFF6FF' }]}>
+                <Text style={[styles.reminderSentText, { color: BLUE }]}>Reminder sent to {params.client}</Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.reminderBtn}
+                onPress={() => setReminderSent(true)}
+                activeOpacity={0.85}>
+                <Text style={styles.reminderBtnText}>Send Reminder</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={[styles.blueOutlineBtn, { flex: 0 }]}
+              onPress={() => { setShowNoReviewModal(false); setReminderSent(false); }}
+              activeOpacity={0.7}>
+              <Text style={styles.blueOutlineBtnText}>Close</Text>
+            </TouchableOpacity>
           </Pressable>
         </Pressable>
       </Modal>
@@ -781,5 +823,26 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+
+  reminderBtn: {
+    backgroundColor: BLUE,
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+  reminderBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  reminderSentBox: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  reminderSentText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
