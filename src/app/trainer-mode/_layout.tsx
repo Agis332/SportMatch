@@ -55,6 +55,13 @@ export default function TrainerModeLayout() {
           tabBarIcon: ({ color, size }) => <User color={color} size={size} strokeWidth={1.75} />,
         }}
       />
+      <Tabs.Screen
+        name="session-detail"
+        options={{
+          href: null,
+          tabBarStyle: { display: 'none' },
+        }}
+      />
     </Tabs>
   );
 }
