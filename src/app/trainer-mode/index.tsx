@@ -8,6 +8,7 @@ import {
   DollarSign,
   Heart,
   MapPin,
+  Plus,
   Star,
   Tag,
   UserCircle,
@@ -172,14 +173,15 @@ export default function TrainerHomeScreen() {
         {/* Greeting */}
         <View style={[styles.greetCard, { backgroundColor: BLUE }]}>
           <View>
-            <Text style={styles.greetTitle}>Good morning! 👋</Text>
+            <Text style={styles.greetTitle}>Welcome back! 👋</Text>
             <Text style={styles.greetSub}>You have {sessions.length} sessions today</Text>
           </View>
           <TouchableOpacity
             style={styles.availBtn}
             onPress={() => router.push('/trainer/availability')}
             activeOpacity={0.85}>
-            <Text style={styles.availBtnText}>Availability</Text>
+            <Plus size={14} color="#FFFFFF" strokeWidth={2.5} />
+            <Text style={styles.availBtnText}>New Session</Text>
           </TouchableOpacity>
         </View>
 
@@ -430,6 +432,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   availBtnText: {
     color: '#FFFFFF',
