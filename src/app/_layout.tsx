@@ -2,6 +2,8 @@ import { Stack } from 'expo-router';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { BookingProvider } from '@/context/BookingContext';
+import { TrainerStatsProvider } from '@/context/TrainerStatsContext';
+import { WalletProvider } from '@/context/WalletContext';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { LocationProvider } from '@/context/LocationContext';
 import { NotificationsProvider } from '@/context/NotificationsContext';
@@ -16,8 +18,12 @@ export default function RootLayout() {
           <NotificationsProvider>
             <TrainerProfileProvider>
               <BookingProvider>
-                <AnimatedSplashOverlay />
-                <Stack screenOptions={{ headerShown: false }} />
+                <WalletProvider>
+                  <TrainerStatsProvider>
+                    <AnimatedSplashOverlay />
+                    <Stack screenOptions={{ headerShown: false }} />
+                  </TrainerStatsProvider>
+                </WalletProvider>
               </BookingProvider>
             </TrainerProfileProvider>
           </NotificationsProvider>

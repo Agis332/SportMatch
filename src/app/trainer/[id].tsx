@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/context/ThemeContext';
+import { useTrainerStats } from '@/context/TrainerStatsContext';
 
 const BLUE = '#208AEF';
 
@@ -196,9 +197,13 @@ export default function TrainerProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
+  const trainerStats    = useTrainerStats();
   const [isFavorite, setIsFavorite] = useState(false);
 
-  const profile = TRAINERS_DATA[id] ?? TRAINERS_DATA['1'];
+  const rawProfile = TRAINERS_DATA[id] ?? TRAINERS_DATA['1'];
+  const profile    = id === '1'
+    ? { ...rawProfile, rating: trainerStats.rating, clients: trainerStats.totalClients }
+    : rawProfile;
 
   function fmtDuration(mins: number): string {
     if (mins < 60) return `${mins} min`;

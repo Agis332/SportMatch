@@ -30,6 +30,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/context/ThemeContext';
+import { useTrainerStats } from '@/context/TrainerStatsContext';
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -40,12 +41,6 @@ const BLUE = '#208AEF';
 const TRAINER_NAME     = 'Mantas Petrauskas';
 const TRAINER_VERIFIED = true;
 
-const STATS = [
-  { label: "Today's sessions", value: '2',    icon: Calendar,   color: BLUE,      bg: '#EFF6FF', darkBg: '#1E3A5F', route: '/trainer-mode/sessions?tab=upcoming' },
-  { label: 'Earnings', value: '€1,240', icon: DollarSign, color: '#22C55E', bg: '#F0FDF4', darkBg: '#052E16', route: '/trainer/earnings' as any, subValue: '€320 available', subColor: '#22C55E' },
-  { label: 'Total clients',    value: '4',    icon: Users,      color: '#8B5CF6', bg: '#EDE9FE', darkBg: '#2E1065', route: '/trainer-mode/sessions?tab=past' },
-  { label: 'Rating',           value: '4.8',  icon: Star,       color: '#F59E0B', bg: '#FFFBEB', darkBg: '#451A03', route: '/trainer/reviews'        },
-];
 
 const ACTIONS = [
   { label: 'Manage Profile',   icon: UserCircle,    color: '#8B5CF6', route: '/trainer/manage-profile' as const, modal: false },
@@ -120,6 +115,14 @@ const INITIAL_SESSIONS: Session[] = [
 export default function TrainerHomeScreen() {
   const insets         = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
+  const trainerStats   = useTrainerStats();
+
+  const STATS = [
+    { label: "Today's sessions", value: String(trainerStats.todaysSessions), icon: Calendar,   color: BLUE,      bg: '#EFF6FF', darkBg: '#1E3A5F', route: '/trainer-mode/sessions?tab=upcoming' },
+    { label: 'Earnings', value: `€${trainerStats.totalEarned.toLocaleString()}`, icon: DollarSign, color: '#22C55E', bg: '#F0FDF4', darkBg: '#052E16', route: '/trainer/earnings' as any, subValue: `€${trainerStats.available} available`, subColor: '#22C55E' },
+    { label: 'Total clients',    value: String(trainerStats.totalClients),     icon: Users,      color: '#8B5CF6', bg: '#EDE9FE', darkBg: '#2E1065', route: '/trainer-mode/sessions?tab=past' },
+    { label: 'Rating',           value: String(trainerStats.rating),           icon: Star,       color: '#F59E0B', bg: '#FFFBEB', darkBg: '#451A03', route: '/trainer/reviews'        },
+  ];
 
   const [sessions, setSessions] = useState<Session[]>(INITIAL_SESSIONS);
   const [selected, setSelected] = useState<Session | null>(null);
@@ -197,7 +200,7 @@ export default function TrainerHomeScreen() {
                 {'subValue' in stat && stat.subValue ? (
                   <View style={styles.statValueRow}>
                     <Text style={[styles.statValue, { color: textPrimary }]}>{stat.value}</Text>
-                    <Text style={[styles.statSubValue, { color: textSub }]}>{' / €320 available'}</Text>
+                    <Text style={[styles.statSubValue, { color: textSub }]}>{` / €${trainerStats.available} available`}</Text>
                   </View>
                 ) : (
                   <Text style={[styles.statValue, { color: textPrimary }]}>{stat.value}</Text>

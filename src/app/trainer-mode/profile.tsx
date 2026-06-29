@@ -16,12 +16,14 @@ import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 're
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/context/ThemeContext';
+import { useTrainerStats } from '@/context/TrainerStatsContext';
 
 const BLUE = '#208AEF';
 
 export default function TrainerProfileScreen() {
   const insets         = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
+  const trainerStats   = useTrainerStats();
 
   const [notifications, setNotifications] = useState(true);
 
@@ -103,9 +105,9 @@ export default function TrainerProfileScreen() {
         {/* Stats strip */}
         <View style={[styles.statsStrip, { backgroundColor: cardBg, borderColor }]}>
           {[
-            { value: '8',   label: 'Clients'  },
-            { value: '4.8', label: 'Rating'   },
-            { value: '28',  label: 'Sessions' },
+            { value: String(trainerStats.totalClients),     label: 'Clients'  },
+            { value: String(trainerStats.rating),           label: 'Rating'   },
+            { value: '28',                                  label: 'Sessions' },
           ].map((s, i, arr) => (
             <View key={s.label} style={[styles.statItem, i < arr.length - 1 && { borderRightWidth: 1, borderRightColor: divColor }]}>
               <Text style={[styles.statValue, { color: textPrimary }]}>{s.value}</Text>
@@ -158,7 +160,7 @@ export default function TrainerProfileScreen() {
             iconColor="#F59E0B"
             iconBg={isDarkMode ? '#451A03' : '#FFFBEB'}
             label="My Reviews"
-            sublabel="4.8 · 24 reviews"
+            sublabel={`${trainerStats.rating} · 24 reviews`}
             onPress={() => router.push('/trainer/reviews' as never)}
           />
           <View style={[styles.divider, { backgroundColor: divColor }]} />

@@ -25,23 +25,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/context/ThemeContext';
+import { useWallet, type SavedCard, type BankAccount } from '@/context/WalletContext';
 
 const BLUE = '#208AEF';
 
 type PayoutStatus = 'completed' | 'pending';
 
-interface SavedCard   { id: string; brand: string; last4: string; expiry: string }
-interface BankAccount { id: string; holder: string; maskedIban: string; bankName: string }
-interface Payout      { id: string; date: string; amount: string; method: string; status: PayoutStatus }
-
-const INITIAL_CARDS: SavedCard[] = [
-  { id: 'c1', brand: 'Visa',       last4: '4242', expiry: '08/26' },
-  { id: 'c2', brand: 'Mastercard', last4: '8888', expiry: '11/25' },
-];
-
-const INITIAL_ACCOUNTS: BankAccount[] = [
-  { id: 'b1', holder: 'Mantas Petrauskas', maskedIban: 'LT•• •••• •••• •••• 4412', bankName: 'Swedbank' },
-];
+interface Payout { id: string; date: string; amount: string; method: string; status: PayoutStatus }
 
 const PAYOUTS: Payout[] = [
   { id: 'p1', date: 'Jun 27, 2026', amount: '€140.00', method: 'Visa •••• 4242',       status: 'completed' },
@@ -55,8 +45,7 @@ export default function WalletScreen() {
   const insets         = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
 
-  const [cards,    setCards]    = useState<SavedCard[]>(INITIAL_CARDS);
-  const [accounts, setAccounts] = useState<BankAccount[]>(INITIAL_ACCOUNTS);
+  const { cards, bankAccounts: accounts, addCard, removeCard, addBankAccount, removeBankAccount } = useWallet();
 
   // Add card modal
   const [showCardModal,  setShowCardModal]  = useState(false);
@@ -104,12 +93,7 @@ export default function WalletScreen() {
   function handleAddCard() {
     if (!canAddCard) return;
     const brand = newCardNumber.startsWith('5') ? 'Mastercard' : 'Visa';
-    setCards(prev => [...prev, {
-      id:     `c${Date.now()}`,
-      brand,
-      last4:  newCardNumber.slice(-4),
-      expiry: newExpiry,
-    }]);
+    addCard({ brand, last4: newCardNumber.slice(-4), expiry: newExpiry });
     closeCardModal();
   }
 
@@ -119,12 +103,7 @@ export default function WalletScreen() {
     const masked = raw.length > 4
       ? raw.slice(0, 2) + '•• •••• •••• •••• ' + raw.slice(-4)
       : newIban;
-    setAccounts(prev => [...prev, {
-      id:         `b${Date.now()}`,
-      holder:     newHolder.trim(),
-      maskedIban: masked,
-      bankName:   '',
-    }]);
+    addBankAccount({ holder: newHolder.trim(), maskedIban: masked, bankName: '' });
     closeBankModal();
   }
 
@@ -139,9 +118,9 @@ export default function WalletScreen() {
   function confirmDelete() {
     if (!deleteTarget) return;
     if (deleteTarget.type === 'card') {
-      setCards(prev => prev.filter(c => c.id !== deleteTarget.id));
+      removeCard(deleteTarget.id);
     } else {
-      setAccounts(prev => prev.filter(a => a.id !== deleteTarget.id));
+      removeBankAccount(deleteTarget.id);
     }
     setDeleteTarget(null);
   }

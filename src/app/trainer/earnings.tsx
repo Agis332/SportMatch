@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { ArrowUpRight, ChevronLeft } from 'lucide-react-native';
+import { ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -16,21 +16,64 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/context/ThemeContext';
+import { useTrainerStats } from '@/context/TrainerStatsContext';
+import { useWallet } from '@/context/WalletContext';
 
 const BLUE = '#208AEF';
-const BAR_MAX_H = 100;
+const YEARS = [2024, 2025, 2026];
 
 type Filter = 'all' | 'this_month' | 'total_sessions';
 
-const CHART_DATA = [
-  { month: 'Jan', amount: 180 },
-  { month: 'Feb', amount: 210 },
-  { month: 'Mar', amount: 290 },
-  { month: 'Apr', amount: 340 },
-  { month: 'May', amount: 480 },
-  { month: 'Jun', amount: 320 },
-];
-const CHART_MAX = Math.max(...CHART_DATA.map(d => d.amount));
+const BAR_WIDTH  = 44;
+const BAR_GAP    = 10;
+const BAR_MAX_H  = 140;
+
+type ChartEntry = { month: string; amount: number };
+
+const CHART_BY_YEAR: Record<number, ChartEntry[]> = {
+  2024: [
+    { month: 'Jan', amount: 0 },
+    { month: 'Feb', amount: 0 },
+    { month: 'Mar', amount: 0 },
+    { month: 'Apr', amount: 0 },
+    { month: 'May', amount: 0 },
+    { month: 'Jun', amount: 0 },
+    { month: 'Jul', amount: 0 },
+    { month: 'Aug', amount: 0 },
+    { month: 'Sep', amount: 0 },
+    { month: 'Oct', amount: 0 },
+    { month: 'Nov', amount: 0 },
+    { month: 'Dec', amount: 0 },
+  ],
+  2025: [
+    { month: 'Jan', amount: 0   },
+    { month: 'Feb', amount: 0   },
+    { month: 'Mar', amount: 0   },
+    { month: 'Apr', amount: 0   },
+    { month: 'May', amount: 0   },
+    { month: 'Jun', amount: 0   },
+    { month: 'Jul', amount: 0   },
+    { month: 'Aug', amount: 0   },
+    { month: 'Sep', amount: 80  },
+    { month: 'Oct', amount: 120 },
+    { month: 'Nov', amount: 160 },
+    { month: 'Dec', amount: 140 },
+  ],
+  2026: [
+    { month: 'Jan', amount: 0   },
+    { month: 'Feb', amount: 0   },
+    { month: 'Mar', amount: 0   },
+    { month: 'Apr', amount: 180 },
+    { month: 'May', amount: 240 },
+    { month: 'Jun', amount: 320 },
+    { month: 'Jul', amount: 0   },
+    { month: 'Aug', amount: 0   },
+    { month: 'Sep', amount: 0   },
+    { month: 'Oct', amount: 0   },
+    { month: 'Nov', amount: 0   },
+    { month: 'Dec', amount: 0   },
+  ],
+};
 
 type TxMonth = 'this' | 'last';
 
@@ -46,20 +89,14 @@ interface Transaction {
 }
 
 const TRANSACTIONS: Transaction[] = [
-  { id: '1',  client: 'Jonas Kazlauskas', initials: 'JK', date: 'Today, 10:00',     type: 'Football · Individual', amount: 35, color: '#B5C9E4', month: 'this' },
-  { id: '2',  client: 'Marta Petraitytė', initials: 'MP', date: 'Today, 14:00',     type: 'Running · Individual',  amount: 30, color: '#C8DDB5', month: 'this' },
-  { id: '3',  client: 'Eglė Jankutė',     initials: 'EJ', date: 'Yesterday, 09:00', type: 'Football · Individual', amount: 35, color: '#E4CDB5', month: 'this' },
-  { id: '4',  client: 'Tomas Butkus',     initials: 'TB', date: 'Jun 24, 16:00',    type: 'CrossFit · Group',      amount: 20, color: '#D4B5E4', month: 'this' },
-  { id: '5',  client: 'Rasa Mockutė',     initials: 'RM', date: 'Jun 22, 11:00',    type: 'Football · Individual', amount: 35, color: '#B5E4D4', month: 'this' },
-  { id: '6',  client: 'Andrius Stankus',  initials: 'AS', date: 'Jun 20, 09:00',    type: 'Running · Individual',  amount: 30, color: '#E4B5C8', month: 'this' },
-  { id: '7',  client: 'Viktorija Paulė',  initials: 'VP', date: 'Jun 18, 17:00',    type: 'Football · Individual', amount: 35, color: '#C8B5E4', month: 'this' },
-  { id: '8',  client: 'Laurynas Grigas',  initials: 'LG', date: 'Jun 15, 10:00',    type: 'CrossFit · Individual', amount: 35, color: '#E4E4B5', month: 'this' },
-  { id: '9',  client: 'Jonas Kazlauskas', initials: 'JK', date: 'May 28, 10:00',    type: 'Football · Individual', amount: 35, color: '#B5C9E4', month: 'last' },
-  { id: '10', client: 'Marta Petraitytė', initials: 'MP', date: 'May 24, 14:00',    type: 'Running · Individual',  amount: 30, color: '#C8DDB5', month: 'last' },
-  { id: '11', client: 'Eglė Jankutė',     initials: 'EJ', date: 'May 20, 09:00',    type: 'Football · Individual', amount: 35, color: '#E4CDB5', month: 'last' },
-  { id: '12', client: 'Tomas Butkus',     initials: 'TB', date: 'May 18, 16:00',    type: 'CrossFit · Group',      amount: 20, color: '#D4B5E4', month: 'last' },
-  { id: '13', client: 'Rasa Mockutė',     initials: 'RM', date: 'May 15, 11:00',    type: 'Football · Individual', amount: 35, color: '#B5E4D4', month: 'last' },
-  { id: '14', client: 'Andrius Stankus',  initials: 'AS', date: 'May 10, 09:00',    type: 'Running · Individual',  amount: 30, color: '#E4B5C8', month: 'last' },
+  { id: '1', client: 'Jonas Kazlauskas', initials: 'JK', date: 'Today, 10:00',     type: 'Football · Individual', amount: 35, color: '#B5C9E4', month: 'this' },
+  { id: '2', client: 'Tomas Butkus',     initials: 'TB', date: 'Today, 14:00',     type: 'Football · Group',      amount: 35, color: '#D4B5E4', month: 'this' },
+  { id: '3', client: 'Rasa Mockutė',     initials: 'RM', date: 'Yesterday, 09:00', type: 'Football · Individual', amount: 35, color: '#B5E4D4', month: 'this' },
+  { id: '4', client: 'Eglė Jankutė',     initials: 'EJ', date: 'Jun 24, 16:00',   type: 'Football · Individual', amount: 35, color: '#E4CDB5', month: 'this' },
+  { id: '5', client: 'Andrius Stankus',  initials: 'AS', date: 'Jun 22, 11:00',   type: 'Football · Group',      amount: 35, color: '#E4B5C8', month: 'this' },
+  { id: '6', client: 'Viktorija Paulė',  initials: 'VP', date: 'Jun 20, 09:00',   type: 'Football · Individual', amount: 35, color: '#C8B5E4', month: 'this' },
+  { id: '7', client: 'Jonas Kazlauskas', initials: 'JK', date: 'May 30, 10:00',   type: 'Football · Individual', amount: 35, color: '#B5C9E4', month: 'last' },
+  { id: '8', client: 'Laurynas Grigas',  initials: 'LG', date: 'May 26, 14:00',   type: 'Football · Individual', amount: 35, color: '#E4E4B5', month: 'last' },
 ];
 
 const FILTERS: { key: Filter; label: string }[] = [
@@ -68,36 +105,35 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: 'total_sessions', label: 'Total Sessions' },
 ];
 
-const INITIAL_CARDS = [
-  { id: 'c1', brand: 'Visa',       last4: '4242', expiry: '08/26' },
-  { id: 'c2', brand: 'Mastercard', last4: '5555', expiry: '12/25' },
-  { id: 'c3', brand: 'Visa',       last4: '1234', expiry: '03/27' },
-];
-
 export default function TrainerEarningsScreen() {
   const insets         = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
+  const trainerStats   = useTrainerStats();
 
   const [filter,        setFilter]        = useState<Filter>('all');
+  const [chartYear,     setChartYear]     = useState(2026);
   const [showWithdraw,  setShowWithdraw]  = useState(false);
   const [withdrawDone,  setWithdrawDone]  = useState(false);
   const [withdrawAmt,   setWithdrawAmt]   = useState('');
-  const [payMethod,     setPayMethod]     = useState<'card' | 'iban'>('card');
+  const [payMethod,      setPayMethod]      = useState<'card' | 'bank' | 'iban'>('card');
   const [ibanValue,      setIbanValue]      = useState('');
   const [accountHolder,  setAccountHolder]  = useState('');
-  const [selectedCardId, setSelectedCardId] = useState('c1');
-  const [savedCards,     setSavedCards]     = useState(INITIAL_CARDS);
+  const { cards: savedCards, bankAccounts, addCard } = useWallet();
+  const [selectedCardId, setSelectedCardId] = useState(() => savedCards[0]?.id ?? '');
+  const [selectedBankId, setSelectedBankId] = useState(() => bankAccounts[0]?.id ?? '');
   const [showAddCard,    setShowAddCard]    = useState(false);
   const [newCardNumber,  setNewCardNumber]  = useState('');
   const [newExpiry,      setNewExpiry]      = useState('');
   const [newCvv,         setNewCvv]         = useState('');
   const [newCardHolder,  setNewCardHolder]  = useState('');
 
-  const AVAILABLE = 280;
+  const AVAILABLE = trainerStats.available;
   const amountNum  = parseFloat(withdrawAmt.replace(',', '.')) || 0;
   const amountOver = amountNum > AVAILABLE;
   const canConfirm = amountNum > 0 && !amountOver && (
-    payMethod === 'card' || (ibanValue.trim().length > 0 && accountHolder.trim().length > 0)
+    payMethod === 'card' ||
+    payMethod === 'bank' ||
+    (payMethod === 'iban' && ibanValue.trim().length > 0 && accountHolder.trim().length > 0)
   );
 
   const bg          = isDarkMode ? '#111827' : '#F3F4F6';
@@ -124,7 +160,8 @@ export default function TrainerEarningsScreen() {
       setIbanValue('');
       setAccountHolder('');
       setPayMethod('card');
-      setSelectedCardId('c1');
+      setSelectedCardId(savedCards[0]?.id ?? '');
+      setSelectedBankId(bankAccounts[0]?.id ?? '');
     }, 2000);
   }
 
@@ -151,7 +188,7 @@ export default function TrainerEarningsScreen() {
         <View style={[styles.balanceCard, { backgroundColor: BLUE }]}>
           <Text style={styles.balanceLabel}>Available to withdraw</Text>
           <View style={styles.balanceRow}>
-            <Text style={styles.balanceAmount}>€280.00</Text>
+            <Text style={styles.balanceAmount}>€{trainerStats.available.toFixed(2)}</Text>
             <TouchableOpacity
               style={styles.withdrawBtn}
               onPress={() => setShowWithdraw(true)}
@@ -165,10 +202,10 @@ export default function TrainerEarningsScreen() {
         {/* Stats cards — single row */}
         <View style={styles.statsRow}>
           {([
-            { label: 'Available',    value: '€280'   },
-            { label: 'This Month',   value: '€320'   },
-            { label: 'Withdrawn',    value: '€920'   },
-            { label: 'Total Earned', value: '€1,240' },
+            { label: 'Available',    value: `€${trainerStats.available}`                          },
+            { label: 'This Month',   value: `€${trainerStats.thisMonth}`                          },
+            { label: 'Withdrawn',    value: `€${trainerStats.withdrawn}`                          },
+            { label: 'Total Earned', value: `€${trainerStats.totalEarned.toLocaleString()}`       },
           ] as const).map(s => (
             <View key={s.label} style={[styles.statCard, { backgroundColor: cardBg }]}>
               <Text style={[styles.statCardValue, { color: textPrimary }]}>{s.value}</Text>
@@ -179,32 +216,62 @@ export default function TrainerEarningsScreen() {
 
         {/* Monthly earnings chart */}
         <View style={[styles.section, { backgroundColor: cardBg, borderColor }]}>
-          <Text style={[styles.sectionTitle, { color: textPrimary }]}>Monthly Earnings</Text>
-          <View style={styles.chartBars}>
-            {CHART_DATA.map((d, i) => {
-              const barH  = Math.max(4, Math.round((d.amount / CHART_MAX) * BAR_MAX_H));
-              const isCur = i === CHART_DATA.length - 1;
-              return (
-                <View key={d.month} style={styles.chartBarCol}>
-                  <View style={[styles.chartBar, {
-                    height:          barH,
-                    backgroundColor: isCur ? BLUE : isDarkMode ? '#374151' : '#E5E7EB',
-                    borderRadius:    isCur ? 6 : 4,
-                  }]} />
-                </View>
-              );
-            })}
+          {/* Header row: title + year selector */}
+          <View style={styles.chartHeader}>
+            <Text style={[styles.sectionTitle, { color: textPrimary }]}>Monthly Earnings</Text>
+            <View style={styles.yearSelector}>
+              <TouchableOpacity
+                onPress={() => setChartYear(y => Math.max(YEARS[0], y - 1))}
+                disabled={chartYear <= YEARS[0]}
+                activeOpacity={0.6}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <ChevronLeft size={18} color={chartYear <= YEARS[0] ? (isDarkMode ? '#4B5563' : '#D1D5DB') : textPrimary} strokeWidth={2} />
+              </TouchableOpacity>
+              <Text style={[styles.yearLabel, { color: textPrimary }]}>{chartYear}</Text>
+              <TouchableOpacity
+                onPress={() => setChartYear(y => Math.min(YEARS[YEARS.length - 1], y + 1))}
+                disabled={chartYear >= YEARS[YEARS.length - 1]}
+                activeOpacity={0.6}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <ChevronRight size={18} color={chartYear >= YEARS[YEARS.length - 1] ? (isDarkMode ? '#4B5563' : '#D1D5DB') : textPrimary} strokeWidth={2} />
+              </TouchableOpacity>
+            </View>
           </View>
-          <View style={styles.chartLabels}>
-            {CHART_DATA.map((d, i) => {
-              const isCur = i === CHART_DATA.length - 1;
-              return (
-                <Text key={d.month} style={[styles.chartLabel, { color: isCur ? BLUE : textSub }]}>
-                  {d.month}
-                </Text>
-              );
-            })}
-          </View>
+
+          {/* Scrollable bars */}
+          {(() => {
+            const data    = CHART_BY_YEAR[chartYear];
+            const maxAmt  = Math.max(...data.map(d => d.amount), 1);
+            const curIdx  = chartYear === 2026 ? 5 : chartYear === 2025 ? 11 : -1;
+            return (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chartScroll}>
+                {data.map((d, i) => {
+                  const isEmpty = d.amount === 0;
+                  const barH    = isEmpty ? 4 : Math.max(10, Math.round((d.amount / maxAmt) * BAR_MAX_H));
+                  const isCur   = i === curIdx;
+                  const barColor = isEmpty
+                    ? (isDarkMode ? '#2D3748' : '#F3F4F6')
+                    : isCur ? BLUE : (isDarkMode ? '#374151' : '#E5E7EB');
+                  return (
+                    <View key={d.month} style={[styles.chartBarCol, { width: BAR_WIDTH }]}>
+                      {!isEmpty && (
+                        <Text style={[styles.chartAmtLabel, { color: isCur ? BLUE : textSub }]}>
+                          €{d.amount}
+                        </Text>
+                      )}
+                      <View style={[styles.chartBar, { height: barH, backgroundColor: barColor }]} />
+                      <Text style={[styles.chartLabel, { color: isCur ? BLUE : isEmpty ? (isDarkMode ? '#4B5563' : '#D1D5DB') : textSub }]}>
+                        {d.month}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            );
+          })()}
         </View>
 
         {/* Transactions */}
@@ -388,10 +455,8 @@ export default function TrainerEarningsScreen() {
                           onPress={() => {
                             if (newCardNumber.length < 16 || newExpiry.length < 5 || newCvv.length < 3 || !newCardHolder.trim()) return;
                             const brand = newCardNumber.startsWith('5') ? 'Mastercard' : 'Visa';
-                            const newId = `c${Date.now()}`;
-                            const newCard = { id: newId, brand, last4: newCardNumber.slice(-4), expiry: newExpiry };
-                            setSavedCards(prev => [...prev, newCard]);
-                            setSelectedCardId(newId);
+                            const added = addCard({ brand, last4: newCardNumber.slice(-4), expiry: newExpiry });
+                            setSelectedCardId(added.id);
                             setPayMethod('card');
                             setShowAddCard(false);
                             setNewCardNumber(''); setNewExpiry(''); setNewCvv(''); setNewCardHolder('');
@@ -404,9 +469,37 @@ export default function TrainerEarningsScreen() {
                   )}
                 </View>
 
-                {/* Payment method — IBAN */}
+                {/* Payment method — saved bank accounts */}
+                {bankAccounts.length > 0 && (
+                  <View style={styles.fieldWrap}>
+                    <Text style={[styles.fieldLabel, { color: textSub }]}>Bank accounts</Text>
+                    {bankAccounts.map(acc => {
+                      const sel = payMethod === 'bank' && selectedBankId === acc.id;
+                      return (
+                        <TouchableOpacity
+                          key={acc.id}
+                          style={[styles.methodRow, {
+                            backgroundColor: inputBg,
+                            borderColor: sel ? BLUE : isDarkMode ? '#374151' : '#E5E7EB',
+                          }]}
+                          onPress={() => { setPayMethod('bank'); setSelectedBankId(acc.id); }}
+                          activeOpacity={0.75}>
+                          <View style={[styles.radio, { borderColor: sel ? BLUE : isDarkMode ? '#4B5563' : '#D1D5DB' }]}>
+                            {sel && <View style={styles.radioDot} />}
+                          </View>
+                          <View style={styles.methodInfo}>
+                            <Text style={[styles.methodTitle, { color: textPrimary }]}>{acc.holder}</Text>
+                            <Text style={[styles.methodSub, { color: textSub }]}>{acc.maskedIban}</Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+
+                {/* Payment method — manual IBAN */}
                 <View style={styles.fieldWrap}>
-                  <Text style={[styles.fieldLabel, { color: textSub }]}>Bank transfer (IBAN)</Text>
+                  <Text style={[styles.fieldLabel, { color: textSub }]}>New bank transfer</Text>
                   <TouchableOpacity
                     style={[styles.methodRow, {
                       backgroundColor: inputBg,
@@ -418,7 +511,7 @@ export default function TrainerEarningsScreen() {
                       {payMethod === 'iban' && <View style={styles.radioDot} />}
                     </View>
                     <View style={styles.methodInfo}>
-                      <Text style={[styles.methodTitle, { color: textPrimary }]}>Enter bank account</Text>
+                      <Text style={[styles.methodTitle, { color: textPrimary }]}>Enter IBAN manually</Text>
                       <Text style={[styles.methodSub, { color: textSub }]}>1–2 business days</Text>
                     </View>
                   </TouchableOpacity>
@@ -584,29 +677,45 @@ const styles = StyleSheet.create({
   },
 
   // Chart
-  chartBars: {
+  chartHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  yearSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  yearLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    minWidth: 36,
+    textAlign: 'center',
+  },
+  chartScroll: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    height: BAR_MAX_H,
-    gap: 6,
+    gap: BAR_GAP,
+    paddingVertical: 4,
   },
   chartBarCol: {
-    flex: 1,
+    alignItems: 'center',
     justifyContent: 'flex-end',
+    gap: 6,
+  },
+  chartAmtLabel: {
+    fontSize: 10,
+    fontWeight: '600',
   },
   chartBar: {
     width: '100%',
-  },
-  chartLabels: {
-    flexDirection: 'row',
-    marginTop: 8,
-    gap: 6,
+    borderRadius: 5,
   },
   chartLabel: {
-    flex: 1,
-    textAlign: 'center',
     fontSize: 11,
     fontWeight: '500',
+    textAlign: 'center',
   },
 
   // Filter tabs
