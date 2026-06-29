@@ -9,6 +9,7 @@ import {
   Heart,
   MapPin,
   Plus,
+  Sliders,
   Star,
   Tag,
   UserCircle,
@@ -44,8 +45,9 @@ const TRAINER_VERIFIED = true;
 
 const ACTIONS = [
   { label: 'Manage Profile',   icon: UserCircle,    color: '#8B5CF6', route: '/trainer/manage-profile' as const, modal: false },
-  { label: 'Set Availability', icon: CalendarClock, color: BLUE,      route: '/trainer/availability'   as const, modal: false },
-  { label: 'Saved by Clients', icon: Heart,         color: '#F43F5E', route: '/trainer-mode/saved-by-clients' as const, modal: false },
+  { label: 'Set Availability',  icon: CalendarClock, color: BLUE,      route: '/trainer/availability'            as const, modal: false },
+  { label: 'Session Settings',  icon: Sliders,       color: '#0D9488', route: '/trainer-mode/session-settings'   as any,   modal: false },
+  { label: 'Saved by Clients',  icon: Heart,         color: '#F43F5E', route: '/trainer-mode/saved-by-clients'   as const, modal: false },
   { label: 'My Reviews',       icon: Star,          color: '#F59E0B', route: '/trainer/reviews'        as const, modal: false },
 ];
 
@@ -161,8 +163,8 @@ export default function TrainerHomeScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 4, backgroundColor: headerBg, borderBottomColor: borderColor }]}>
         <View style={styles.headerNameRow}>
-          <Text style={styles.headerLabel}>Trainer: </Text>
-          <Text style={styles.headerName}>{TRAINER_NAME}</Text>
+          <Text style={[styles.headerLabel, { color: textSub }]}>Trainer: </Text>
+          <Text style={[styles.headerName, { color: textPrimary }]}>{TRAINER_NAME}</Text>
           {TRAINER_VERIFIED && (
             <BadgeCheck size={20} color="#FFFFFF" fill="#22C55E" strokeWidth={2.5} />
           )}

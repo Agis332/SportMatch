@@ -25,12 +25,16 @@ const BLUE = '#208AEF';
 const SPORTS = [
   'Football', 'Basketball', 'Tennis', 'Swimming', 'Boxing',
   'Yoga', 'CrossFit', 'Running', 'Martial Arts', 'Cycling',
+  'Volleyball', 'Golf', 'Badminton', 'Table Tennis', 'Athletics',
+  'Gymnastics', 'Dance', 'Pilates', 'Hockey', 'Rugby',
 ];
 
 const SPORT_EMOJI: Record<string, string> = {
   Football: '⚽', Basketball: '🏀', Tennis: '🎾', Swimming: '🏊',
   Boxing: '🥊', Yoga: '🧘', CrossFit: '💪', Running: '🏃',
-  'Martial Arts': '🥋', Cycling: '🚴',
+  'Martial Arts': '🥋', Cycling: '🚴', Volleyball: '🏐', Golf: '⛳',
+  Badminton: '🏸', 'Table Tennis': '🏓', Athletics: '🏅',
+  Gymnastics: '🤸', Dance: '💃', Pilates: '🧎', Hockey: '🏑', Rugby: '🏉',
 };
 
 const CITIES = [
@@ -108,7 +112,9 @@ export default function ManageProfileScreen() {
   const [expOpen,     setExpOpen]     = useState(false);
 
   // Sports
-  const [selectedSports, setSelectedSports] = useState<string[]>(['Football', 'Running']);
+  const [selectedSports,  setSelectedSports]  = useState<string[]>([]);
+  const [showSportModal,  setShowSportModal]   = useState(false);
+  const [sportSearch,     setSportSearch]      = useState('');
 
   // Training locations (from shared context)
   const { locations, addLocation: ctxAddLocation, removeLocation } = useTrainerProfile();
@@ -168,13 +174,17 @@ export default function ManageProfileScreen() {
     }
   }
 
-  // ── Sport toggle ─────────────────────────────────────────────────────────────
+  // ── Sport picker ─────────────────────────────────────────────────────────────
 
-  function toggleSport(sport: string) {
-    setSelectedSports(prev =>
-      prev.includes(sport) ? prev.filter(s => s !== sport) : [...prev, sport],
-    );
+  function selectSport(sport: string) {
+    setSelectedSports([sport]);
+    setShowSportModal(false);
+    setSportSearch('');
   }
+
+  const filteredSports = sportSearch.trim()
+    ? SPORTS.filter(s => s.toLowerCase().includes(sportSearch.toLowerCase()))
+    : SPORTS;
 
   // ── Certificate helpers ───────────────────────────────────────────────────────
 
@@ -321,30 +331,97 @@ export default function ManageProfileScreen() {
           </View>
 
           {/* ── Sports ── */}
-          <SectionHeader title="Sports" textSub={textSub} />
+          <SectionHeader title="Sport" textSub={textSub} />
           <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
-            <Text style={[styles.cardHint, { color: textSub }]}>Select all sports you train</Text>
-            <View style={styles.sportsGrid}>
-              {SPORTS.map(sport => {
-                const active = selectedSports.includes(sport);
-                return (
-                  <TouchableOpacity
-                    key={sport}
-                    style={[styles.sportChip,
-                      active
-                        ? { backgroundColor: BLUE }
-                        : { backgroundColor: chipBg, borderColor }]}
-                    onPress={() => toggleSport(sport)}
-                    activeOpacity={0.7}>
-                    <Text style={styles.sportEmoji}>{SPORT_EMOJI[sport]}</Text>
-                    <Text style={[styles.sportLabel, { color: active ? '#FFFFFF' : textPrimary }]}>
-                      {sport}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            <TouchableOpacity
+              style={[styles.sportPickerRow, { borderColor }]}
+              onPress={() => setShowSportModal(true)}
+              activeOpacity={0.7}>
+              {selectedSports[0] ? (
+                <Text style={[styles.sportPickerValue, { color: textPrimary }]}>
+                  {SPORT_EMOJI[selectedSports[0]]}{'  '}{selectedSports[0]}
+                </Text>
+              ) : (
+                <Text style={[styles.sportPickerValue, { color: textSub }]}>Select sport…</Text>
+              )}
+              <ChevronDown size={16} color={textSub} strokeWidth={2} />
+            </TouchableOpacity>
           </View>
+
+          {/* Sport picker modal */}
+          <Modal
+            visible={showSportModal}
+            transparent
+            animationType="slide"
+            onRequestClose={() => { setShowSportModal(false); setSportSearch(''); }}>
+            <Pressable
+              style={styles.sportOverlay}
+              onPress={() => { setShowSportModal(false); setSportSearch(''); }}>
+              <Pressable style={[styles.sportSheet, { backgroundColor: sheetBg }]} onPress={() => {}}>
+                {/* Handle */}
+                <View style={styles.sportHandle} />
+
+                {/* Header */}
+                <View style={[styles.sportSheetHeader, { borderBottomColor: borderColor }]}>
+                  <Text style={[styles.sportSheetTitle, { color: textPrimary }]}>Select Sport</Text>
+                  <TouchableOpacity
+                    onPress={() => { setShowSportModal(false); setSportSearch(''); }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <X size={20} color={textSub} strokeWidth={2} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Search */}
+                <View style={[styles.sportSearch, { backgroundColor: isDarkMode ? '#374151' : '#F3F4F6', borderColor }]}>
+                  <TextInput
+                    style={[styles.sportSearchInput, { color: textPrimary }]}
+                    value={sportSearch}
+                    onChangeText={setSportSearch}
+                    placeholder="Search sports…"
+                    placeholderTextColor={textSub}
+                    autoCorrect={false}
+                  />
+                  {sportSearch.length > 0 && (
+                    <TouchableOpacity onPress={() => setSportSearch('')} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                      <X size={15} color={textSub} strokeWidth={2} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* List */}
+                <ScrollView
+                  style={styles.sportList}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled">
+                  {filteredSports.map((sport, i) => {
+                    const selected = selectedSports[0] === sport;
+                    return (
+                      <View key={sport}>
+                        {i > 0 && <View style={[styles.sportDivider, { backgroundColor: borderColor }]} />}
+                        <TouchableOpacity
+                          style={styles.sportListRow}
+                          onPress={() => selectSport(sport)}
+                          activeOpacity={0.6}>
+                          <Text style={styles.sportListEmoji}>{SPORT_EMOJI[sport]}</Text>
+                          <Text style={[styles.sportListName, { color: selected ? BLUE : textPrimary, fontWeight: selected ? '600' : '400' }]}>
+                            {sport}
+                          </Text>
+                          {selected && (
+                            <View style={styles.sportCheck}>
+                              <Text style={styles.sportCheckMark}>✓</Text>
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                  {filteredSports.length === 0 && (
+                    <Text style={[styles.sportNoResults, { color: textSub }]}>No sports found</Text>
+                  )}
+                </ScrollView>
+              </Pressable>
+            </Pressable>
+          </Modal>
 
           {/* ── Training Locations ── */}
           <SectionHeader title="Training Locations" textSub={textSub} />
@@ -380,8 +457,8 @@ export default function ManageProfileScreen() {
             </Text>
             {certs.length > 0 && (
               <View style={styles.certsGrid}>
-                {certs.map(cert => (
-                  <View key={cert.id} style={[styles.certCard, { backgroundColor: isDarkMode ? '#374151' : '#F9FAFB', borderColor }]}>
+                {certs.map((cert, index) => (
+                  <View key={`cert-${cert.id}-${index}`} style={[styles.certCard, { backgroundColor: isDarkMode ? '#374151' : '#F9FAFB', borderColor }]}>
                     {/* Thumbnail */}
                     <View style={[styles.certThumb, { backgroundColor: isDarkMode ? '#4B5563' : '#E5E7EB' }]}>
                       {cert.uri
@@ -768,27 +845,108 @@ const styles = StyleSheet.create({
   },
 
   // Sports
-  sportsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: -4,
-  },
-  sportChip: {
+  // Sport picker row (inside card)
+  sportPickerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    borderRadius: 20,
+    justifyContent: 'space-between',
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  sportPickerValue: {
+    fontSize: 15,
+    flex: 1,
+  },
+
+  // Sport bottom sheet
+  sportOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  sportSheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '75%',
+  },
+  sportHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D1D5DB',
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  sportSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  sportSheetTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  sportSearch: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginVertical: 12,
+    borderRadius: 10,
     borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    gap: 8,
   },
-  sportEmoji: {
-    fontSize: 14,
+  sportSearchInput: {
+    flex: 1,
+    fontSize: 15,
+    padding: 0,
   },
-  sportLabel: {
+  sportList: {
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  sportListRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 13,
+    gap: 14,
+  },
+  sportListEmoji: {
+    fontSize: 20,
+    width: 28,
+    textAlign: 'center',
+  },
+  sportListName: {
+    flex: 1,
+    fontSize: 15,
+  },
+  sportCheck: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: BLUE,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sportCheckMark: {
+    color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '700',
+  },
+  sportDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 42,
+  },
+  sportNoResults: {
+    textAlign: 'center',
+    paddingVertical: 24,
+    fontSize: 14,
   },
 
   // Certifications

@@ -371,11 +371,12 @@ const TRAINER_FEATURES = [
 ];
 
 function TrainerModeModal({ isDarkMode, onClose }: { isDarkMode: boolean; onClose: () => void }) {
-  const sheetBg    = isDarkMode ? '#1F2937' : '#FFFFFF';
-  const textColor  = isDarkMode ? '#FFFFFF' : '#111827';
-  const textSub    = isDarkMode ? '#9CA3AF' : '#6B7280';
-  const featureBg  = isDarkMode ? '#374151' : '#F9FAFB';
+  const sheetBg       = isDarkMode ? '#1F2937' : '#FFFFFF';
+  const textColor     = isDarkMode ? '#FFFFFF' : '#111827';
+  const textSub       = isDarkMode ? '#9CA3AF' : '#6B7280';
+  const featureBg     = isDarkMode ? '#374151' : '#F9FAFB';
   const featureBorder = isDarkMode ? '#4B5563' : '#F3F4F6';
+  const cancelBg      = isDarkMode ? '#374151' : '#F3F4F6';
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
@@ -383,33 +384,27 @@ function TrainerModeModal({ isDarkMode, onClose }: { isDarkMode: boolean; onClos
         <Pressable style={[tmStyles.sheet, { backgroundColor: sheetBg }]} onPress={() => {}}>
           <View style={tmStyles.handle} />
 
-          {/* Icon + title */}
-          <View style={tmStyles.iconWrap}>
-            <Dumbbell size={28} color="#EA580C" strokeWidth={2} />
-          </View>
           <Text style={[tmStyles.title, { color: textColor }]}>Switch to Trainer Mode</Text>
           <Text style={[tmStyles.sub, { color: textSub }]}>
             Manage your training sessions, clients and schedule — all in one place.
           </Text>
 
-          {/* Feature list */}
           <View style={[tmStyles.featureList, { backgroundColor: featureBg, borderColor: featureBorder }]}>
             {TRAINER_FEATURES.map((f, i) => (
               <View key={i} style={tmStyles.featureRow}>
-                <View style={tmStyles.featureDot} />
+                <Check size={16} color="#208AEF" strokeWidth={2.5} />
                 <Text style={[tmStyles.featureText, { color: textColor }]}>{f}</Text>
               </View>
             ))}
           </View>
 
-          {/* Buttons */}
           <TouchableOpacity
             style={tmStyles.primaryBtn}
             onPress={() => { onClose(); router.push('/trainer-mode'); }}
             activeOpacity={0.85}>
             <Text style={tmStyles.primaryBtnText}>Switch to Trainer Mode</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={tmStyles.cancelBtn} onPress={onClose} activeOpacity={0.7}>
+          <TouchableOpacity style={[tmStyles.cancelBtn, { backgroundColor: cancelBg }]} onPress={onClose} activeOpacity={0.7}>
             <Text style={[tmStyles.cancelBtnText, { color: textSub }]}>Cancel</Text>
           </TouchableOpacity>
         </Pressable>
@@ -440,14 +435,6 @@ const tmStyles = StyleSheet.create({
     backgroundColor: '#D1D5DB',
     marginBottom: 4,
   },
-  iconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    backgroundColor: '#FFF7ED',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   title: {
     fontSize: 20,
     fontWeight: '700',
@@ -470,13 +457,6 @@ const tmStyles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  featureDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#EA580C',
-    flexShrink: 0,
-  },
   featureText: {
     fontSize: 14,
     flex: 1,
@@ -494,7 +474,10 @@ const tmStyles = StyleSheet.create({
     fontWeight: '700',
   },
   cancelBtn: {
-    paddingVertical: 6,
+    width: '100%',
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
   },
   cancelBtnText: {
     fontSize: 15,
@@ -693,6 +676,15 @@ export default function SettingsScreen() {
           colors={colors} onPress={() => router.push('/privacy')} />
       </Section>
 
+      {/* Switch to Trainer Mode */}
+      <TouchableOpacity
+        style={[styles.trainerBtn, { borderColor: BLUE, backgroundColor: isDarkMode ? '#0D2140' : '#EFF6FF' }]}
+        onPress={() => setShowTrainerModal(true)}
+        activeOpacity={0.8}>
+        <Dumbbell size={18} color={BLUE} strokeWidth={2} />
+        <Text style={styles.trainerBtnText}>Switch to Trainer Mode</Text>
+      </TouchableOpacity>
+
       {/* Log Out */}
       <TouchableOpacity
         style={[styles.logoutBtn, { backgroundColor: colors.logoutBg, borderColor: colors.logoutBorder }]}
@@ -845,13 +837,30 @@ const styles = StyleSheet.create({
     marginLeft: 62,
   },
 
+  // Switch to Trainer Mode
+  trainerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginTop: 16,
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  trainerBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: BLUE,
+  },
+
   // Log Out
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    marginTop: 16,
+    marginTop: 8,
     paddingVertical: 16,
     borderRadius: 16,
     borderWidth: 1,

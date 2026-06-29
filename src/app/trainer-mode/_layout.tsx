@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { CalendarDays, House, MessageCircle, User } from 'lucide-react-native';
+import { CalendarDays, House, Menu, MessageCircle } from 'lucide-react-native';
 import { Platform, StyleSheet } from 'react-native';
 
 import { useTheme } from '@/context/ThemeContext';
@@ -51,8 +51,8 @@ export default function TrainerModeLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
-          tabBarIcon: ({ color, size }) => <User color={color} size={size} strokeWidth={1.75} />,
+          title: 'Settings',
+          tabBarIcon: ({ color, size }) => <Menu color={color} size={size} strokeWidth={1.75} />,
         }}
       />
       <Tabs.Screen
@@ -71,6 +71,20 @@ export default function TrainerModeLayout() {
       />
       <Tabs.Screen
         name="wallet"
+        options={{
+          href: null,
+          tabBarStyle: { display: 'none' },
+        }}
+      />
+      <Tabs.Screen
+        name="notification-settings"
+        options={{
+          href: null,
+          tabBarStyle: { display: 'none' },
+        }}
+      />
+      <Tabs.Screen
+        name="session-settings"
         options={{
           href: null,
           tabBarStyle: { display: 'none' },

@@ -1,4 +1,4 @@
-import { createContext, Dispatch, SetStateAction, useContext, useState } from 'react';
+import { createContext, Dispatch, SetStateAction, useCallback, useContext, useState } from 'react';
 
 export interface TrainingLocation {
   id: string;
@@ -21,6 +21,46 @@ export interface DayConfig {
 }
 
 export type Schedule = Record<string, DayConfig>;
+
+// ─── Session types & mock data ────────────────────────────────────────────────
+
+export interface Session {
+  id: string;
+  client: string;
+  initials: string;
+  color: string;
+  sport: string;
+  date: string;
+  time: string;
+  duration: string;
+  location: string;
+  status: 'confirmed' | 'pending' | 'completed' | 'cancelled';
+  type: 'Individual' | 'Group';
+  price: string;
+  sortDate: string;
+}
+
+export const STATUS_META: Record<Session['status'], { label: string; color: string; bg: string }> = {
+  confirmed: { label: 'Confirmed', color: '#16A34A', bg: '#DCFCE7' },
+  pending:   { label: 'Pending',   color: '#D97706', bg: '#FEF9C3' },
+  completed: { label: 'Completed', color: '#2563EB', bg: '#DBEAFE' },
+  cancelled: { label: 'Cancelled', color: '#DC2626', bg: '#FEE2E2' },
+};
+
+export const INITIAL_SESSIONS: Session[] = [
+  { id: '1',  client: 'Jonas Kazlauskas',   initials: 'JK', color: '#B5C9E4', sport: '⚽ Football',  date: 'Today, Jun 27',    time: '10:00', duration: '60 min', location: 'Vingis Park, Vilnius',          status: 'confirmed', type: 'Individual', price: '€45', sortDate: '2026-06-27' },
+  { id: '2',  client: 'Marta Petraitytė',   initials: 'MP', color: '#C8DDB5', sport: '🏃 Running',   date: 'Today, Jun 27',    time: '14:00', duration: '45 min', location: 'Sereikiškių Park, Vilnius',    status: 'confirmed', type: 'Individual', price: '€35', sortDate: '2026-06-27' },
+  { id: '3',  client: 'Tomas Butkus',        initials: 'TB', color: '#D4B5E4', sport: '⚽ Football',  date: 'Tomorrow, Jun 28', time: '09:00', duration: '60 min', location: 'Vingis Park, Vilnius',          status: 'pending',   type: 'Individual', price: '€45', sortDate: '2026-06-28' },
+  { id: '4',  client: 'Rasa Mockutė',        initials: 'RM', color: '#B5E4D4', sport: '🏃 Running',   date: 'Jun 29',           time: '11:00', duration: '45 min', location: 'Sereikiškių Park, Vilnius',    status: 'confirmed', type: 'Individual', price: '€35', sortDate: '2026-06-29' },
+  { id: '5',  client: 'Viktorija Paulė',     initials: 'VP', color: '#C8B5E4', sport: '💪 CrossFit',  date: 'Jun 30',           time: '08:30', duration: '60 min', location: 'FitSpace Gym, Vilnius',        status: 'confirmed', type: 'Group',      price: '€30', sortDate: '2026-06-30' },
+  { id: '6',  client: 'Kristina Vaitkutė',   initials: 'KV', color: '#B5D4E4', sport: '⚽ Football',  date: 'Jul 3',            time: '10:00', duration: '60 min', location: 'Vingis Park, Vilnius',          status: 'pending',   type: 'Individual', price: '€45', sortDate: '2026-07-03' },
+  { id: '7',  client: 'Eglė Jankutė',        initials: 'EJ', color: '#E4CDB5', sport: '💪 CrossFit',  date: 'Jun 24',           time: '08:00', duration: '60 min', location: 'FitSpace Gym, Vilnius',        status: 'completed', type: 'Group',      price: '€30', sortDate: '2026-06-24' },
+  { id: '8',  client: 'Andrius Stankus',      initials: 'AS', color: '#E4B5C8', sport: '⚽ Football',  date: 'Jun 22',           time: '16:00', duration: '60 min', location: 'Vingis Park, Vilnius',          status: 'completed', type: 'Group',      price: '€30', sortDate: '2026-06-22' },
+  { id: '9',  client: 'Laurynas Grigas',      initials: 'LG', color: '#E4E4B5', sport: '🏃 Running',   date: 'Jun 20',           time: '07:30', duration: '45 min', location: 'Sereikiškių Park, Vilnius',    status: 'completed', type: 'Individual', price: '€35', sortDate: '2026-06-20' },
+  { id: '10', client: 'Darius Paulauskas',    initials: 'DP', color: '#E4B5B5', sport: '💪 CrossFit',  date: 'Jun 18',           time: '10:00', duration: '60 min', location: 'FitSpace Gym, Vilnius',        status: 'cancelled', type: 'Group',      price: '€30', sortDate: '2026-06-18' },
+];
+
+// ─── Location data ────────────────────────────────────────────────────────────
 
 const INITIAL_LOCATIONS: TrainingLocation[] = [
   { id: 'tl_0', city: 'Vilnius', address: 'Žalgirio g. 90' },
@@ -60,6 +100,11 @@ interface TrainerProfileContextValue {
   setPrices: Dispatch<SetStateAction<Record<number, string>>>;
   sessionDuration: number;
   setSessionDuration: Dispatch<SetStateAction<number>>;
+  autoConfirm: boolean;
+  setAutoConfirm: Dispatch<SetStateAction<boolean>>;
+  sessions: Session[];
+  setSessions: Dispatch<SetStateAction<Session[]>>;
+  confirmAllPending: () => void;
 }
 
 const TrainerProfileContext = createContext<TrainerProfileContextValue>({
@@ -72,16 +117,23 @@ const TrainerProfileContext = createContext<TrainerProfileContextValue>({
   setPrices: () => {},
   sessionDuration: 60,
   setSessionDuration: () => {},
+  autoConfirm: false,
+  setAutoConfirm: () => {},
+  sessions: INITIAL_SESSIONS,
+  setSessions: () => {},
+  confirmAllPending: () => {},
 });
 
 let locIdCounter = 1;
 function nextLocId() { return `tl_${locIdCounter++}`; }
 
 export function TrainerProfileProvider({ children }: { children: React.ReactNode }) {
-  const [locations, setLocations] = useState<TrainingLocation[]>(INITIAL_LOCATIONS);
-  const [schedule, setSchedule] = useState<Schedule>(() => makeInitialSchedule(DEFAULT_LOC));
-  const [prices, setPrices] = useState<Record<number, string>>(INITIAL_PRICES);
+  const [locations,      setLocations]      = useState<TrainingLocation[]>(INITIAL_LOCATIONS);
+  const [schedule,       setSchedule]       = useState<Schedule>(() => makeInitialSchedule(DEFAULT_LOC));
+  const [prices,         setPrices]         = useState<Record<number, string>>(INITIAL_PRICES);
   const [sessionDuration, setSessionDuration] = useState(60);
+  const [autoConfirm,    setAutoConfirm]    = useState(false);
+  const [sessions,       setSessions]       = useState<Session[]>(INITIAL_SESSIONS);
 
   function addLocation(city: string, address: string) {
     setLocations(prev => [...prev, { id: nextLocId(), city: city.trim(), address: address.trim() }]);
@@ -91,8 +143,12 @@ export function TrainerProfileProvider({ children }: { children: React.ReactNode
     setLocations(prev => prev.filter(l => l.id !== id));
   }
 
+  const confirmAllPending = useCallback(() => {
+    setSessions(prev => prev.map(s => s.status === 'pending' ? { ...s, status: 'confirmed' } : s));
+  }, []);
+
   return (
-    <TrainerProfileContext.Provider value={{ locations, addLocation, removeLocation, schedule, setSchedule, prices, setPrices, sessionDuration, setSessionDuration }}>
+    <TrainerProfileContext.Provider value={{ locations, addLocation, removeLocation, schedule, setSchedule, prices, setPrices, sessionDuration, setSessionDuration, autoConfirm, setAutoConfirm, sessions, setSessions, confirmAllPending }}>
       {children}
     </TrainerProfileContext.Provider>
   );
