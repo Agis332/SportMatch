@@ -1,4 +1,4 @@
-import { createContext, Dispatch, SetStateAction, useCallback, useContext, useState } from 'react';
+import { createContext, Dispatch, SetStateAction, useContext, useState } from 'react';
 
 export interface TrainingLocation {
   id: string;
@@ -50,7 +50,7 @@ export const STATUS_META: Record<Session['status'], { label: string; color: stri
 export const INITIAL_SESSIONS: Session[] = [
   { id: '1',  client: 'Jonas Kazlauskas',   initials: 'JK', color: '#B5C9E4', sport: '⚽ Football',  date: 'Today, Jun 27',    time: '10:00', duration: '60 min', location: 'Vingis Park, Vilnius',          status: 'confirmed', type: 'Individual', price: '€45', sortDate: '2026-06-27' },
   { id: '2',  client: 'Marta Petraitytė',   initials: 'MP', color: '#C8DDB5', sport: '🏃 Running',   date: 'Today, Jun 27',    time: '14:00', duration: '45 min', location: 'Sereikiškių Park, Vilnius',    status: 'confirmed', type: 'Individual', price: '€35', sortDate: '2026-06-27' },
-  { id: '3',  client: 'Tomas Butkus',        initials: 'TB', color: '#D4B5E4', sport: '⚽ Football',  date: 'Tomorrow, Jun 28', time: '09:00', duration: '60 min', location: 'Vingis Park, Vilnius',          status: 'pending',   type: 'Individual', price: '€45', sortDate: '2026-06-28' },
+  { id: '3',  client: 'Tomas Butkus',        initials: 'TB', color: '#D4B5E4', sport: '⚽ Football',  date: 'Jun 28',           time: '09:00', duration: '60 min', location: 'Vingis Park, Vilnius',          status: 'cancelled', type: 'Individual', price: '€45', sortDate: '2026-06-28' },
   { id: '4',  client: 'Rasa Mockutė',        initials: 'RM', color: '#B5E4D4', sport: '🏃 Running',   date: 'Jun 29',           time: '11:00', duration: '45 min', location: 'Sereikiškių Park, Vilnius',    status: 'confirmed', type: 'Individual', price: '€35', sortDate: '2026-06-29' },
   { id: '5',  client: 'Viktorija Paulė',     initials: 'VP', color: '#C8B5E4', sport: '💪 CrossFit',  date: 'Jun 30',           time: '08:30', duration: '60 min', location: 'FitSpace Gym, Vilnius',        status: 'confirmed', type: 'Group',      price: '€30', sortDate: '2026-06-30' },
   { id: '6',  client: 'Kristina Vaitkutė',   initials: 'KV', color: '#B5D4E4', sport: '⚽ Football',  date: 'Jul 3',            time: '10:00', duration: '60 min', location: 'Vingis Park, Vilnius',          status: 'pending',   type: 'Individual', price: '€45', sortDate: '2026-07-03' },
@@ -104,7 +104,6 @@ interface TrainerProfileContextValue {
   setAutoConfirm: Dispatch<SetStateAction<boolean>>;
   sessions: Session[];
   setSessions: Dispatch<SetStateAction<Session[]>>;
-  confirmAllPending: () => void;
 }
 
 const TrainerProfileContext = createContext<TrainerProfileContextValue>({
@@ -121,7 +120,6 @@ const TrainerProfileContext = createContext<TrainerProfileContextValue>({
   setAutoConfirm: () => {},
   sessions: INITIAL_SESSIONS,
   setSessions: () => {},
-  confirmAllPending: () => {},
 });
 
 let locIdCounter = 1;
@@ -143,12 +141,8 @@ export function TrainerProfileProvider({ children }: { children: React.ReactNode
     setLocations(prev => prev.filter(l => l.id !== id));
   }
 
-  const confirmAllPending = useCallback(() => {
-    setSessions(prev => prev.map(s => s.status === 'pending' ? { ...s, status: 'confirmed' } : s));
-  }, []);
-
   return (
-    <TrainerProfileContext.Provider value={{ locations, addLocation, removeLocation, schedule, setSchedule, prices, setPrices, sessionDuration, setSessionDuration, autoConfirm, setAutoConfirm, sessions, setSessions, confirmAllPending }}>
+    <TrainerProfileContext.Provider value={{ locations, addLocation, removeLocation, schedule, setSchedule, prices, setPrices, sessionDuration, setSessionDuration, autoConfirm, setAutoConfirm, sessions, setSessions }}>
       {children}
     </TrainerProfileContext.Provider>
   );

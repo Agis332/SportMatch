@@ -1,8 +1,7 @@
 import { router } from 'expo-router';
-import { CheckCircle, ChevronLeft } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { ChevronLeft } from 'lucide-react-native';
+import { useState, useRef } from 'react';
 import {
-  Animated,
   PanResponder,
   ScrollView,
   StyleSheet,
@@ -119,32 +118,15 @@ export default function SessionSettingsScreen() {
   const insets         = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
 
-  const { autoConfirm, setAutoConfirm, confirmAllPending } = useTrainerProfile();
+  const { autoConfirm, setAutoConfirm } = useTrainerProfile();
 
   const [policy,        setPolicy]        = useState<CancellationPolicy>('moderate');
   const [minNotice,     setMinNotice]     = useState<MinNotice>('2h');
   const [maxAdvanceIdx, setMaxAdvanceIdx] = useState(2); // "1 month"
   const [bufferIdx,     setBufferIdx]     = useState(1); // "30 min"
 
-  const [showToast, setShowToast] = useState(false);
-  const toastOpacity = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (showToast) {
-      Animated.sequence([
-        Animated.timing(toastOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-        Animated.delay(2000),
-        Animated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
-      ]).start(() => setShowToast(false));
-    }
-  }, [showToast]);
-
   function handleAutoConfirmToggle(value: boolean) {
     setAutoConfirm(value);
-    if (value) {
-      confirmAllPending();
-      setShowToast(true);
-    }
   }
 
   const bg          = isDarkMode ? '#111827' : '#F3F4F6';
@@ -348,13 +330,6 @@ export default function SessionSettingsScreen() {
 
       </ScrollView>
 
-      {/* Success toast */}
-      {showToast && (
-        <Animated.View style={[styles.toast, { opacity: toastOpacity, bottom: insets.bottom + 24 }]}>
-          <CheckCircle size={18} color="#FFFFFF" strokeWidth={2} />
-          <Text style={styles.toastText}>All pending sessions confirmed!</Text>
-        </Animated.View>
-      )}
     </View>
   );
 }
@@ -534,26 +509,4 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Toast
-  toast: {
-    position: 'absolute',
-    alignSelf: 'center',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#16A34A',
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  toastText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
 });

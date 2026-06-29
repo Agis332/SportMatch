@@ -53,7 +53,7 @@ export default function SessionsScreen() {
 
   const newOrders      = sessions.filter(s => s.status === 'pending');
   const upcoming       = sessions
-    .filter(s => s.status === 'confirmed')
+    .filter(s => s.status === 'confirmed' && s.sortDate >= todayStr)
     .sort((a, b) =>
       new Date(`${a.sortDate}T${a.time}`).getTime() -
       new Date(`${b.sortDate}T${b.time}`).getTime()
@@ -93,15 +93,15 @@ export default function SessionsScreen() {
             id: session.id,
             client: session.client,
             initials: session.initials,
-            color: session.color,
+            status: session.status,
             sport: session.sport,
             date: session.date,
             time: session.time,
             duration: session.duration,
             location: session.location,
-            status: session.status,
             type: session.type,
             price: session.price,
+            color: session.color,
           },
         })}
         activeOpacity={0.75}>

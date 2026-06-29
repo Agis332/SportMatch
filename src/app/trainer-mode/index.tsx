@@ -32,6 +32,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/context/ThemeContext';
 import { useTrainerStats } from '@/context/TrainerStatsContext';
+import { Session, useTrainerProfile } from '@/context/TrainerProfileContext';
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -52,81 +53,25 @@ const ACTIONS = [
 ];
 
 
-type SessionStatus = 'confirmed' | 'pending';
-
-interface Session {
-  id: string;
-  client: string;
-  initials: string;
-  color: string;
-  sport: string;
-  date: string;
-  time: string;
-  duration: string;
-  location: string;
-  status: SessionStatus;
-  type: 'Individual' | 'Group';
-  price: string;
-}
-
-const INITIAL_SESSIONS: Session[] = [
-  {
-    id: '1',
-    client: 'Jonas Kazlauskas',
-    initials: 'JK',
-    color: '#B5C9E4',
-    sport: '⚽ Football',
-    date: 'Today, Jun 27',
-    time: '10:00',
-    duration: '60 min',
-    location: 'Vingis Park, Vilnius',
-    status: 'confirmed',
-    type: 'Individual',
-    price: '€45',
-  },
-  {
-    id: '2',
-    client: 'Marta Petraitytė',
-    initials: 'MP',
-    color: '#C8DDB5',
-    sport: '🏃 Running',
-    date: 'Today, Jun 27',
-    time: '14:00',
-    duration: '45 min',
-    location: 'Sereikiškių Park, Vilnius',
-    status: 'confirmed',
-    type: 'Individual',
-    price: '€35',
-  },
-  {
-    id: '3',
-    client: 'Tomas Butkus',
-    initials: 'TB',
-    color: '#D4B5E4',
-    sport: '⚽ Football',
-    date: 'Today, Jun 27',
-    time: '16:00',
-    duration: '60 min',
-    location: 'Vingis Park, Vilnius',
-    status: 'pending',
-    type: 'Individual',
-    price: '€45',
-  },
-];
 
 export default function TrainerHomeScreen() {
   const insets         = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
   const trainerStats   = useTrainerStats();
+  const { sessions, setSessions } = useTrainerProfile();
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todaysSessions = sessions.filter(
+    s => s.sortDate === todayStr && (s.status === 'confirmed' || s.status === 'pending'),
+  );
 
   const STATS = [
-    { label: "Today's sessions", value: String(trainerStats.todaysSessions), icon: Calendar,   color: BLUE,      bg: '#EFF6FF', darkBg: '#1E3A5F', route: '/trainer-mode/sessions?tab=upcoming' },
-    { label: 'Earnings', value: `€${trainerStats.totalEarned.toLocaleString()}`, icon: DollarSign, color: '#22C55E', bg: '#F0FDF4', darkBg: '#052E16', route: '/trainer/earnings' as any, subValue: `€${trainerStats.available} available`, subColor: '#22C55E' },
-    { label: 'Total clients',    value: String(trainerStats.totalClients),     icon: Users,      color: '#8B5CF6', bg: '#EDE9FE', darkBg: '#2E1065', route: '/trainer-mode/sessions?tab=past' },
-    { label: 'Rating',           value: String(trainerStats.rating),           icon: Star,       color: '#F59E0B', bg: '#FFFBEB', darkBg: '#451A03', route: '/trainer/reviews'        },
+    { label: "Today's sessions", value: String(todaysSessions.length),                        icon: Calendar,   color: BLUE,      bg: '#EFF6FF', darkBg: '#1E3A5F', route: '/trainer-mode/sessions?tab=upcoming' },
+    { label: 'Earnings',         value: `€${trainerStats.totalEarned.toLocaleString()}`,      icon: DollarSign, color: '#22C55E', bg: '#F0FDF4', darkBg: '#052E16', route: '/trainer/earnings' as any, subValue: `€${trainerStats.available} available`, subColor: '#22C55E' },
+    { label: 'Total clients',    value: String(trainerStats.totalClients),                    icon: Users,      color: '#8B5CF6', bg: '#EDE9FE', darkBg: '#2E1065', route: '/trainer-mode/sessions?tab=past' },
+    { label: 'Rating',           value: String(trainerStats.rating),                          icon: Star,       color: '#F59E0B', bg: '#FFFBEB', darkBg: '#451A03', route: '/trainer/reviews'        },
   ];
 
-  const [sessions, setSessions] = useState<Session[]>(INITIAL_SESSIONS);
   const [selected, setSelected] = useState<Session | null>(null);
 
   const bg          = isDarkMode ? '#111827' : '#F3F4F6';
@@ -157,6 +102,7 @@ export default function TrainerHomeScreen() {
     }, 300);
   }
 
+
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
 
@@ -179,7 +125,7 @@ export default function TrainerHomeScreen() {
         <View style={[styles.greetCard, { backgroundColor: BLUE }]}>
           <View>
             <Text style={styles.greetTitle}>Welcome back! 👋</Text>
-            <Text style={styles.greetSub}>You have {sessions.length} sessions today</Text>
+            <Text style={styles.greetSub}>You have {todaysSessions.length} sessions today</Text>
           </View>
           <TouchableOpacity
             style={styles.availBtn}
@@ -251,7 +197,7 @@ export default function TrainerHomeScreen() {
 
         {/* Today's sessions */}
         <Text style={[styles.sectionLabel, { color: textSub }]}>TODAY'S SESSIONS</Text>
-        {sessions.map(session => {
+        {todaysSessions.map(session => {
           const isPending = session.status === 'pending';
           return (
             <TouchableOpacity
