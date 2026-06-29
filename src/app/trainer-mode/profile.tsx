@@ -3,6 +3,7 @@ import {
   Bell,
   BookOpen,
   ChevronRight,
+  CreditCard,
   DollarSign,
   Dumbbell,
   Edit3,
@@ -141,6 +142,15 @@ export default function TrainerProfileScreen() {
             label="Earnings"
             sublabel="View balance & transactions"
             onPress={() => router.push('/trainer/earnings' as never)}
+          />
+          <View style={[styles.divider, { backgroundColor: divColor }]} />
+          <Row
+            icon={CreditCard}
+            iconColor={BLUE}
+            iconBg={isDarkMode ? '#1E3A5F' : '#EFF6FF'}
+            label="Wallet"
+            sublabel="Cards, bank accounts & payouts"
+            onPress={() => router.push('/trainer-mode/wallet' as never)}
           />
           <View style={[styles.divider, { backgroundColor: divColor }]} />
           <Row

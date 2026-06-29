@@ -42,7 +42,7 @@ const TRAINER_VERIFIED = true;
 
 const STATS = [
   { label: "Today's sessions", value: '2',    icon: Calendar,   color: BLUE,      bg: '#EFF6FF', darkBg: '#1E3A5F', route: '/trainer-mode/sessions?tab=upcoming' },
-  { label: 'Week earnings',    value: '€140', icon: DollarSign, color: '#22C55E', bg: '#F0FDF4', darkBg: '#052E16', route: '/trainer/earnings'       },
+  { label: 'Earnings', value: '€1,240', icon: DollarSign, color: '#22C55E', bg: '#F0FDF4', darkBg: '#052E16', route: '/trainer/earnings' as any, subValue: '€320 available', subColor: '#22C55E' },
   { label: 'Total clients',    value: '4',    icon: Users,      color: '#8B5CF6', bg: '#EDE9FE', darkBg: '#2E1065', route: '/trainer-mode/sessions?tab=past' },
   { label: 'Rating',           value: '4.8',  icon: Star,       color: '#F59E0B', bg: '#FFFBEB', darkBg: '#451A03', route: '/trainer/reviews'        },
 ];
@@ -194,7 +194,14 @@ export default function TrainerHomeScreen() {
                 <View style={[styles.statIcon, { backgroundColor: isDarkMode ? stat.darkBg : stat.bg }]}>
                   <Icon size={16} color={stat.color} strokeWidth={2} />
                 </View>
-                <Text style={[styles.statValue, { color: textPrimary }]}>{stat.value}</Text>
+                {'subValue' in stat && stat.subValue ? (
+                  <View style={styles.statValueRow}>
+                    <Text style={[styles.statValue, { color: textPrimary }]}>{stat.value}</Text>
+                    <Text style={[styles.statSubValue, { color: textSub }]}>{' / €320 available'}</Text>
+                  </View>
+                ) : (
+                  <Text style={[styles.statValue, { color: textPrimary }]}>{stat.value}</Text>
+                )}
                 <Text style={[styles.statLabel, { color: textSub }]}>{stat.label}</Text>
               </>
             );
@@ -464,6 +471,14 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 20,
     fontWeight: '700',
+  },
+  statValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  statSubValue: {
+    fontSize: 11,
+    fontWeight: '500',
   },
   statLabel: {
     fontSize: 12,

@@ -624,7 +624,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   confirmBtn: {
-    backgroundColor: GREEN,
+    backgroundColor: BLUE,
     borderRadius: 14,
     paddingVertical: 15,
     alignItems: 'center',
