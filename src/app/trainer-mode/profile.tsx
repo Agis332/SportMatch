@@ -37,8 +37,16 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ContactModal } from '@/components/contact-modal';
+import { RateModal } from '@/components/rate-modal';
+import { type Language, useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useTrainerStats } from '@/context/TrainerStatsContext';
+
+const LANGUAGES: { code: Language; label: string }[] = [
+  { code: 'en', label: 'English' },
+  { code: 'lt', label: 'Lietuvių' },
+];
 
 const BLUE = '#208AEF';
 
@@ -55,9 +63,13 @@ export default function TrainerProfileScreen() {
   const insets         = useSafeAreaInsets();
   const { isDarkMode, toggleDarkMode } = useTheme();
   const trainerStats   = useTrainerStats();
+  const { language, setLanguage } = useLanguage();
 
-  const [showSwitchModal,  setShowSwitchModal]  = useState(false);
-  const [avatarUri,  setAvatarUri]  = useState<string | null>(null);
+  const [showSwitchModal, setShowSwitchModal] = useState(false);
+  const [avatarUri,       setAvatarUri]       = useState<string | null>(null);
+  const [showRating,      setShowRating]      = useState(false);
+  const [showContact,     setShowContact]     = useState(false);
+  const [langOpen,        setLangOpen]        = useState(false);
 
   async function pickImage() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -268,13 +280,47 @@ export default function TrainerProfileScreen() {
             onPress={() => router.push('/trainer-mode/notification-settings' as never)}
           />
           <Divider />
-          <NavRow
-            icon={Globe}
-            iconColor="#22C55E"
-            iconBg={isDarkMode ? '#052E16' : '#F0FDF4'}
-            label="Language"
-            onPress={() => router.push('/language-settings' as never)}
-          />
+          <TouchableOpacity style={styles.row} onPress={() => setLangOpen(v => !v)} activeOpacity={0.6}>
+            <View style={[styles.rowIcon, { backgroundColor: isDarkMode ? '#052E16' : '#F0FDF4' }]}>
+              <Globe size={16} color="#22C55E" strokeWidth={2} />
+            </View>
+            <Text style={[styles.rowLabel, { color: textPrimary, flex: 1 }]}>Language</Text>
+            <View style={styles.rowRight}>
+              <Text style={[styles.rowValue, { color: textSub }]}>
+                {LANGUAGES.find(l => l.code === language)?.label}
+              </Text>
+              <ChevronRight
+                size={16}
+                color={chevronColor}
+                strokeWidth={2}
+                style={{ transform: [{ rotate: langOpen ? '90deg' : '0deg' }] }}
+              />
+            </View>
+          </TouchableOpacity>
+          {langOpen && (
+            <View style={[styles.langDropdown, { borderTopColor: divColor }]}>
+              {LANGUAGES.map((lang, i) => (
+                <View key={lang.code}>
+                  <TouchableOpacity
+                    style={styles.langOption}
+                    onPress={() => { setLanguage(lang.code); setLangOpen(false); }}
+                    activeOpacity={0.6}>
+                    <Text style={[styles.langOptionText,
+                      { color: language === lang.code ? BLUE : textPrimary },
+                      language === lang.code && { fontWeight: '600' }]}>
+                      {lang.label}
+                    </Text>
+                    {language === lang.code && (
+                      <Check size={16} color={BLUE} strokeWidth={2.5} />
+                    )}
+                  </TouchableOpacity>
+                  {i < LANGUAGES.length - 1 && (
+                    <View style={[styles.langOptionDivider, { backgroundColor: divColor }]} />
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
           <Divider />
           <NavRow
             icon={MapPin}
@@ -309,7 +355,7 @@ export default function TrainerProfileScreen() {
             iconColor="#D97706"
             iconBg={isDarkMode ? '#2D1A00' : '#FFFBEB'}
             label="Rate App"
-            onPress={() => router.push('/rate-app' as never)}
+            onPress={() => setShowRating(true)}
           />
           <Divider />
           <NavRow
@@ -317,7 +363,7 @@ export default function TrainerProfileScreen() {
             iconColor={BLUE}
             iconBg={isDarkMode ? '#1E3A5F' : '#EFF6FF'}
             label="Contact Us"
-            onPress={() => router.push('/contact-support' as never)}
+            onPress={() => setShowContact(true)}
           />
         </Section>
 
@@ -407,6 +453,13 @@ export default function TrainerProfileScreen() {
         </TouchableOpacity>
 
       </ScrollView>
+
+      {showRating && (
+        <RateModal isDarkMode={isDarkMode} onClose={() => setShowRating(false)} />
+      )}
+      {showContact && (
+        <ContactModal isDarkMode={isDarkMode} onClose={() => setShowContact(false)} />
+      )}
     </View>
   );
 }
@@ -669,5 +722,25 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#EF4444',
+  },
+
+  langDropdown: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  langOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    paddingLeft: 62,
+  },
+  langOptionText: {
+    fontSize: 15,
+    fontWeight: '400',
+  },
+  langOptionDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 62,
   },
 });
