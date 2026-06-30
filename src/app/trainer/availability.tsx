@@ -575,7 +575,7 @@ export default function AvailabilityScreen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}>
 
-        {/* ── Global session duration ── */}
+        {/* ── Global session duration & price ── */}
         <View style={[styles.dayCard, { backgroundColor: cardBg, borderColor }]}>
           <View style={styles.durationInlineRow}>
             <Text style={[styles.durationInlineLabel, { color: textSub }]}>Session:</Text>
@@ -595,6 +595,11 @@ export default function AvailabilityScreen() {
                 );
               })}
             </View>
+          </View>
+          <View style={[styles.slotsDivider, { backgroundColor: divColor }]} />
+          <View style={styles.priceRow}>
+            <Text style={[styles.durationInlineLabel, { color: textSub }]}>Price:</Text>
+            <Text style={[styles.priceDisplay, { color: textPrimary }]}>€55 / session</Text>
           </View>
         </View>
 
@@ -936,6 +941,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  priceDisplay: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+
   slotsWrap: {
     paddingHorizontal: 16,
     paddingVertical: 12,

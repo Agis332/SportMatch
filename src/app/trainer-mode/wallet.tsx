@@ -1,6 +1,5 @@
 import { router } from 'expo-router';
 import {
-  ArrowUpRight,
   CheckCircle,
   ChevronLeft,
   Clock,
@@ -140,25 +139,6 @@ export default function WalletScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}>
-
-        {/* Balance overview */}
-        <View style={[styles.balanceCard, { backgroundColor: BLUE }]}>
-          <Text style={styles.balanceLabel}>Total Balance</Text>
-          <Text style={styles.balanceAmount}>€1,240.00</Text>
-          <View style={styles.balanceRow}>
-            <View>
-              <Text style={styles.availableLabel}>Available</Text>
-              <Text style={styles.availableAmount}>€280.00</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.withdrawBtn}
-              onPress={() => router.push('/trainer/earnings' as never)}
-              activeOpacity={0.85}>
-              <ArrowUpRight size={14} color={BLUE} strokeWidth={2.5} />
-              <Text style={[styles.withdrawBtnText, { color: BLUE }]}>Withdraw</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
 
         {/* Payment Methods */}
         <Text style={[styles.sectionLabel, { color: textSub }]}>PAYMENT METHODS</Text>
@@ -431,54 +411,6 @@ const styles = StyleSheet.create({
   scroll: {
     padding: 16,
     gap: 12,
-  },
-
-  balanceCard: {
-    borderRadius: 20,
-    padding: 20,
-    gap: 16,
-  },
-  balanceLabel: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.72)',
-    fontWeight: '500',
-  },
-  balanceAmount: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -1,
-    marginTop: -6,
-  },
-  balanceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: -4,
-  },
-  availableLabel: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.65)',
-    fontWeight: '500',
-  },
-  availableAmount: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginTop: 1,
-  },
-  withdrawBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  withdrawBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
   },
 
   sectionLabel: {

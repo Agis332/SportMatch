@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import { BadgeCheck, Camera, ChevronDown, ChevronLeft, Clock, Plus, Trash2, X } from 'lucide-react-native';
+import { BadgeCheck, Camera, ChevronDown, ChevronLeft, ChevronRight, Clock, Plus, Smartphone, Trash2, X } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   Image,
@@ -86,8 +86,13 @@ function Field({
 
 // ─── Section header ───────────────────────────────────────────────────────────
 
-function SectionHeader({ title, textSub }: { title: string; textSub: string }) {
-  return <Text style={[styles.sectionHeader, { color: textSub }]}>{title.toUpperCase()}</Text>;
+function SectionHeader({ title, subtitle, textSub }: { title: string; subtitle?: string; textSub: string }) {
+  return (
+    <View style={styles.sectionHeaderWrap}>
+      <Text style={[styles.sectionHeader, { color: textSub }]}>{title.toUpperCase()}</Text>
+      {subtitle && <Text style={[styles.sectionSubtitle, { color: textSub }]}>{subtitle}</Text>}
+    </View>
+  );
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -108,7 +113,6 @@ export default function ManageProfileScreen() {
   const [dob,         setDob]         = useState('');
   const [bio,         setBio]         = useState('');
   const [experience,  setExperience]  = useState('3–5 years');
-  const [rate,        setRate]        = useState('35');
   const [expOpen,     setExpOpen]     = useState(false);
 
   // Sports
@@ -312,18 +316,12 @@ export default function ManageProfileScreen() {
                 <View style={styles.formHalf}>
                   <View style={styles.fieldWrap}>
                     <Text style={[styles.fieldLabel, { color: textPrimary }]}>Session Price (€)</Text>
-                    <View style={[styles.rateRow, { backgroundColor: inputBg, borderColor }]}>
-                      <Text style={[styles.rateCurrency, { color: textSub }]}>€</Text>
-                      <TextInput
-                        style={[styles.rateInput, { color: textPrimary }]}
-                        value={rate}
-                        onChangeText={v => setRate(v.replace(/[^0-9]/g, ''))}
-                        placeholder="35"
-                        placeholderTextColor="#AAAAAA"
-                        keyboardType="numeric"
-                      />
-                      <Text style={[styles.rateUnit, { color: textSub }]}>/session</Text>
-                    </View>
+                    <Text style={[styles.rateDisplay, { color: textPrimary }]}>€55 / session</Text>
+                    <TouchableOpacity
+                      onPress={() => router.push('/trainer-mode/session-settings' as never)}
+                      activeOpacity={0.7}>
+                      <Text style={styles.rateEditLink}>Edit in Session Settings</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               </View>
@@ -450,11 +448,12 @@ export default function ManageProfileScreen() {
           </View>
 
           {/* ── Certifications ── */}
-          <SectionHeader title="Certifications" textSub={textSub} />
+          <SectionHeader
+            title="Certifications"
+            subtitle="To get verified, upload your certificates and complete identity verification"
+            textSub={textSub}
+          />
           <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
-            <Text style={[styles.cardHint, { color: textSub }]}>
-              Upload photos of your certificates. Each will be reviewed by our team.
-            </Text>
             {certs.length > 0 && (
               <View style={styles.certsGrid}>
                 {certs.map((cert, index) => (
@@ -506,6 +505,18 @@ export default function ManageProfileScreen() {
               <Text style={[styles.addCertText, { color: BLUE }]}>Add Certificate</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Verify Identity */}
+          <TouchableOpacity
+            style={[styles.verifyRow, { backgroundColor: cardBg, borderColor }]}
+            onPress={() => router.push('/trainer/verify-identity')}
+            activeOpacity={0.7}>
+            <View style={[styles.verifyIcon, { backgroundColor: isDarkMode ? '#1E3A5F' : '#EFF6FF' }]}>
+              <Smartphone size={17} color={BLUE} strokeWidth={2} />
+            </View>
+            <Text style={[styles.verifyLabel, { color: textPrimary }]}>Verify Identity</Text>
+            <ChevronRight size={18} color={isDarkMode ? '#6B7280' : '#D1D5DB'} strokeWidth={2} />
+          </TouchableOpacity>
 
         </ScrollView>
       </KeyboardAvoidingView>
@@ -639,13 +650,21 @@ const styles = StyleSheet.create({
     gap: 8,
   },
 
+  sectionHeaderWrap: {
+    gap: 3,
+    marginTop: 8,
+    marginBottom: 4,
+  },
   sectionHeader: {
     fontSize: 11,
     fontWeight: '600',
     letterSpacing: 0.7,
     paddingHorizontal: 4,
-    marginTop: 8,
-    marginBottom: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    paddingHorizontal: 4,
+    lineHeight: 17,
   },
 
   card: {
@@ -654,12 +673,6 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 14,
   },
-  cardHint: {
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: -4,
-  },
-
   // Photo
   photoRow: {
     flexDirection: 'row',
@@ -753,27 +766,17 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 
-  // Rate
-  rateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 4,
-  },
-  rateCurrency: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  rateInput: {
-    flex: 1,
+  // Rate (read-only)
+  rateDisplay: {
     fontSize: 15,
-    padding: 0,
+    fontWeight: '600',
+    paddingVertical: 4,
   },
-  rateUnit: {
-    fontSize: 14,
+  rateEditLink: {
+    fontSize: 12,
+    color: '#208AEF',
+    fontWeight: '500',
+    marginTop: 2,
   },
 
   // Training locations
@@ -1021,6 +1024,30 @@ const styles = StyleSheet.create({
   addCertText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+
+  // Verify Identity row
+  verifyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  verifyIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  verifyLabel: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
   },
 
   // Bottom bar

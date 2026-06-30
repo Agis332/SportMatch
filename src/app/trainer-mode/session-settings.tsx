@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -120,6 +121,7 @@ export default function SessionSettingsScreen() {
 
   const { autoConfirm, setAutoConfirm } = useTrainerProfile();
 
+  const [sessionPrice,  setSessionPrice]  = useState('35');
   const [policy,        setPolicy]        = useState<CancellationPolicy>('moderate');
   const [minNotice,     setMinNotice]     = useState<MinNotice>('2h');
   const [maxAdvanceIdx, setMaxAdvanceIdx] = useState(2); // "1 month"
@@ -206,6 +208,26 @@ export default function SessionSettingsScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}>
+
+        {/* Session Price */}
+        <SectionLabel
+          title="SESSION PRICE"
+          description="The rate clients are charged per session."
+        />
+        <Card>
+          <View style={styles.priceRow}>
+            <Text style={[styles.priceSymbol, { color: textSub }]}>€</Text>
+            <TextInput
+              style={[styles.priceInput, { color: textPrimary }]}
+              value={sessionPrice}
+              onChangeText={v => setSessionPrice(v.replace(/[^0-9]/g, ''))}
+              placeholder="35"
+              placeholderTextColor="#AAAAAA"
+              keyboardType="numeric"
+            />
+            <Text style={[styles.priceUnit, { color: textSub }]}>/session</Text>
+          </View>
+        </Card>
 
         {/* Cancellation Policy */}
         <SectionLabel
@@ -493,6 +515,29 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     textAlign: 'center',
+  },
+
+  // Session price
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 15,
+    gap: 6,
+  },
+  priceSymbol: {
+    fontSize: 22,
+    fontWeight: '600',
+  },
+  priceInput: {
+    flex: 1,
+    fontSize: 22,
+    fontWeight: '700',
+    padding: 0,
+  },
+  priceUnit: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 
   // Save

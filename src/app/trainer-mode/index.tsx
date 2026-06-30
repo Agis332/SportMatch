@@ -45,11 +45,12 @@ const TRAINER_VERIFIED = true;
 
 
 const ACTIONS = [
-  { label: 'Manage Profile',   icon: UserCircle,    color: '#8B5CF6', route: '/trainer/manage-profile' as const, modal: false },
-  { label: 'Set Availability',  icon: CalendarClock, color: BLUE,      route: '/trainer/availability'            as const, modal: false },
-  { label: 'Session Settings',  icon: Sliders,       color: '#0D9488', route: '/trainer-mode/session-settings'   as any,   modal: false },
-  { label: 'Saved by Clients',  icon: Heart,         color: '#F43F5E', route: '/trainer-mode/saved-by-clients'   as const, modal: false },
-  { label: 'My Reviews',       icon: Star,          color: '#F59E0B', route: '/trainer/reviews'        as const, modal: false },
+  { label: 'Manage Profile',   icon: UserCircle,    color: '#8B5CF6', route: '/trainer/manage-profile'        as const, modal: false },
+  { label: 'Set Availability', icon: CalendarClock, color: BLUE,      route: '/trainer/availability'          as const, modal: false },
+  { label: 'Session Settings', icon: Sliders,       color: '#0D9488', route: '/trainer-mode/session-settings' as any,   modal: false },
+  { label: 'Finances',         icon: DollarSign,    color: '#22C55E', route: '/trainer-mode/finances'         as any,   modal: false },
+  { label: 'Saved by Clients', icon: Heart,         color: '#F43F5E', route: '/trainer-mode/saved-by-clients' as const, modal: false },
+  { label: 'My Reviews',       icon: Star,          color: '#F59E0B', route: '/trainer/reviews'               as const, modal: false },
 ];
 
 

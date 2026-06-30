@@ -572,12 +572,6 @@ export default function SettingsScreen() {
           onPress={() => router.push('/notifications')}
           iconColor="#F59E0B" rowIconBg={isDarkMode ? '#451A03' : '#FFFBEB'}
           colors={colors} />
-        <Divider colors={colors} />
-        <SettingsRow
-          icon={Dumbbell} label="Switch to Trainer Mode"
-          onPress={() => setShowTrainerModal(true)}
-          iconColor="#EA580C" rowIconBg={isDarkMode ? '#431407' : '#FFF7ED'}
-          colors={colors} />
       </Section>
 
       {/* Preferences */}

@@ -6,18 +6,20 @@ import {
   Camera,
   Check,
   ChevronRight,
-  CreditCard,
-  DollarSign,
+  Wallet,
   Dumbbell,
   Edit3,
   FileText,
+  Globe,
   Info,
   LifeBuoy,
   LogOut,
   Mail,
+  MapPin,
   Moon,
   Shield,
   Sliders,
+  Smartphone,
   Star,
   Users,
 } from 'lucide-react-native';
@@ -54,7 +56,6 @@ export default function TrainerProfileScreen() {
   const { isDarkMode, toggleDarkMode } = useTheme();
   const trainerStats   = useTrainerStats();
 
-  const [autoAccept,       setAutoAccept]       = useState(false);
   const [showSwitchModal,  setShowSwitchModal]  = useState(false);
   const [avatarUri,  setAvatarUri]  = useState<string | null>(null);
 
@@ -86,16 +87,11 @@ export default function TrainerProfileScreen() {
   const switchBg       = isDarkMode ? '#1A2535' : '#F0F6FF';
   const switchBorder   = isDarkMode ? '#2D3F5A' : '#DBEAFE';
 
-  function SectionLabel({ title }: { title: string }) {
+  function Section({ title, children }: { title: string; children: React.ReactNode }) {
     return (
-      <Text style={[styles.sectionLabel, { color: textSub }]}>{title}</Text>
-    );
-  }
-
-  function Card({ children }: { children: React.ReactNode }) {
-    return (
-      <View style={[styles.card, { backgroundColor: cardBg }]}>
-        {children}
+      <View style={styles.section}>
+        <Text style={[styles.sectionLabel, { color: textSub }]}>{title}</Text>
+        <View style={[styles.card, { backgroundColor: cardBg }]}>{children}</View>
       </View>
     );
   }
@@ -105,20 +101,17 @@ export default function TrainerProfileScreen() {
   }
 
   function NavRow({
-    icon: Icon, iconColor, iconBg, label, sublabel, value, onPress,
+    icon: Icon, iconColor, iconBg, label, value, onPress,
   }: {
     icon: IconComponent; iconColor: string; iconBg: string;
-    label: string; sublabel?: string; value?: string; onPress?: () => void;
+    label: string; value?: string; onPress?: () => void;
   }) {
     return (
       <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.6}>
         <View style={[styles.rowIcon, { backgroundColor: iconBg }]}>
           <Icon size={16} color={iconColor} strokeWidth={2} />
         </View>
-        <View style={styles.rowLabels}>
-          <Text style={[styles.rowLabel, { color: textPrimary }]}>{label}</Text>
-          {sublabel && <Text style={[styles.rowSublabel, { color: textSub }]}>{sublabel}</Text>}
-        </View>
+        <Text style={[styles.rowLabel, { color: textPrimary, flex: 1 }]}>{label}</Text>
         <View style={styles.rowRight}>
           {value && <Text style={[styles.rowValue, { color: textSub }]}>{value}</Text>}
           <ChevronRight size={16} color={chevronColor} strokeWidth={2} />
@@ -184,9 +177,9 @@ export default function TrainerProfileScreen() {
         {/* Stats strip */}
         <View style={[styles.statsStrip, { backgroundColor: cardBg, borderColor }]}>
           {[
-            { value: String(trainerStats.totalClients), label: 'Clients'  },
-            { value: String(trainerStats.rating),       label: 'Rating'   },
-            { value: '28',                              label: 'Sessions' },
+            { value: String(trainerStats.totalClients), label: 'Clients' },
+            { value: String(trainerStats.rating),       label: 'Rating'  },
+            { value: '€1,240',                          label: 'Earned'  },
           ].map((s, i, arr) => (
             <View key={s.label} style={[styles.statItem, i < arr.length - 1 && { borderRightWidth: 1, borderRightColor: divColor }]}>
               <Text style={[styles.statValue, { color: textPrimary }]}>{s.value}</Text>
@@ -195,16 +188,13 @@ export default function TrainerProfileScreen() {
           ))}
         </View>
 
-        {/* Professional */}
         {/* Account */}
-        <SectionLabel title="ACCOUNT" />
-        <Card>
+        <Section title="ACCOUNT">
           <NavRow
             icon={Edit3}
             iconColor={BLUE}
             iconBg={isDarkMode ? '#1E3A5F' : '#EFF6FF'}
             label="Edit Profile"
-            sublabel="Update bio, sports, photos"
             onPress={() => router.push('/trainer/manage-profile' as never)}
           />
           <Divider />
@@ -213,7 +203,6 @@ export default function TrainerProfileScreen() {
             iconColor="#D97706"
             iconBg={isDarkMode ? '#451A03' : '#FFFBEB'}
             label="My Reviews"
-            sublabel={`${trainerStats.rating} · 24 reviews`}
             onPress={() => router.push('/trainer/reviews' as never)}
           />
           <Divider />
@@ -222,7 +211,6 @@ export default function TrainerProfileScreen() {
             iconColor="#16A34A"
             iconBg={isDarkMode ? '#052E16' : '#F0FDF4'}
             label="Client Sessions"
-            sublabel="6 upcoming sessions"
             onPress={() => router.push('/trainer-mode/sessions' as never)}
           />
           <Divider />
@@ -231,38 +219,33 @@ export default function TrainerProfileScreen() {
             iconColor="#DC2626"
             iconBg={isDarkMode ? '#450A0A' : '#FEF2F2'}
             label="Security"
-            sublabel="Password & authentication"
             onPress={() => router.push('/security' as never)}
           />
           <Divider />
           <NavRow
-            icon={CreditCard}
-            iconColor="#8B5CF6"
-            iconBg={isDarkMode ? '#2E1065' : '#EDE9FE'}
-            label="My Wallet"
-            sublabel="Cards, bank accounts & payouts"
-            onPress={() => router.push('/trainer-mode/wallet' as never)}
+            icon={Smartphone}
+            iconColor="#208AEF"
+            iconBg={isDarkMode ? '#1E3A5F' : '#EFF6FF'}
+            label="Verify Identity"
+            onPress={() => router.push('/trainer/verify-identity' as never)}
           />
           <Divider />
           <NavRow
-            icon={DollarSign}
-            iconColor="#0D9488"
-            iconBg={isDarkMode ? '#042F2E' : '#F0FDFA'}
-            label="View Earnings"
-            sublabel="View balance & transactions"
-            onPress={() => router.push('/trainer/earnings' as never)}
+            icon={Wallet}
+            iconColor="#8B5CF6"
+            iconBg={isDarkMode ? '#2E1065' : '#EDE9FE'}
+            label="Finances"
+            onPress={() => router.push('/trainer-mode/finances' as never)}
           />
-        </Card>
+        </Section>
 
         {/* Availability & Bookings */}
-        <SectionLabel title="AVAILABILITY & BOOKINGS" />
-        <Card>
+        <Section title="AVAILABILITY & BOOKINGS">
           <NavRow
             icon={CalendarClock}
             iconColor="#8B5CF6"
             iconBg={isDarkMode ? '#2E1065' : '#EDE9FE'}
             label="Set Availability"
-            sublabel="Manage your schedule"
             onPress={() => router.push('/trainer/availability' as never)}
           />
           <Divider />
@@ -271,37 +254,36 @@ export default function TrainerProfileScreen() {
             iconColor="#0D9488"
             iconBg={isDarkMode ? '#042F2E' : '#F0FDFA'}
             label="Session Settings"
-            sublabel="Duration, cancellation policy"
             onPress={() => router.push('/trainer-mode/session-settings' as never)}
           />
-          <Divider />
-          <ToggleRow
-            icon={Bell}
-            iconColor="#22C55E"
-            iconBg={isDarkMode ? '#052E16' : '#F0FDF4'}
-            label="Auto-accept Bookings"
-            value={autoAccept}
-            onChange={setAutoAccept}
-          />
-        </Card>
+        </Section>
 
-        {/* Notifications */}
-        <SectionLabel title="NOTIFICATIONS" />
-        <Card>
+        {/* Preferences */}
+        <Section title="PREFERENCES">
           <NavRow
             icon={Bell}
-            iconColor={BLUE}
-            iconBg={isDarkMode ? '#1E3A5F' : '#EFF6FF'}
+            iconColor="#F59E0B"
+            iconBg={isDarkMode ? '#451A03' : '#FFFBEB'}
             label="Notifications"
-            sublabel="Bookings, reminders, messages"
             onPress={() => router.push('/trainer-mode/notification-settings' as never)}
           />
-        </Card>
-
-        {/* Support */}
-        {/* Preferences */}
-        <SectionLabel title="PREFERENCES" />
-        <Card>
+          <Divider />
+          <NavRow
+            icon={Globe}
+            iconColor="#22C55E"
+            iconBg={isDarkMode ? '#052E16' : '#F0FDF4'}
+            label="Language"
+            onPress={() => router.push('/language-settings' as never)}
+          />
+          <Divider />
+          <NavRow
+            icon={MapPin}
+            iconColor="#0D9488"
+            iconBg={isDarkMode ? '#042F2E' : '#F0FDFA'}
+            label="Location"
+            onPress={() => router.push('/location' as never)}
+          />
+          <Divider />
           <ToggleRow
             icon={Moon}
             iconColor="#7C3AED"
@@ -310,10 +292,10 @@ export default function TrainerProfileScreen() {
             value={isDarkMode}
             onChange={toggleDarkMode}
           />
-        </Card>
+        </Section>
 
-        <SectionLabel title="SUPPORT" />
-        <Card>
+        {/* Support */}
+        <Section title="SUPPORT">
           <NavRow
             icon={LifeBuoy}
             iconColor="#EA580C"
@@ -323,25 +305,24 @@ export default function TrainerProfileScreen() {
           />
           <Divider />
           <NavRow
-            icon={Mail}
-            iconColor={BLUE}
-            iconBg={isDarkMode ? '#1E3A5F' : '#EFF6FF'}
-            label="Contact Support"
-            onPress={() => router.push('/contact-support' as never)}
-          />
-          <Divider />
-          <NavRow
             icon={Star}
             iconColor="#D97706"
             iconBg={isDarkMode ? '#2D1A00' : '#FFFBEB'}
             label="Rate App"
             onPress={() => router.push('/rate-app' as never)}
           />
-        </Card>
+          <Divider />
+          <NavRow
+            icon={Mail}
+            iconColor={BLUE}
+            iconBg={isDarkMode ? '#1E3A5F' : '#EFF6FF'}
+            label="Contact Us"
+            onPress={() => router.push('/contact-support' as never)}
+          />
+        </Section>
 
         {/* About */}
-        <SectionLabel title="ABOUT" />
-        <Card>
+        <Section title="ABOUT">
           <NavRow
             icon={Info}
             iconColor="#6B7280"
@@ -365,7 +346,7 @@ export default function TrainerProfileScreen() {
             label="Privacy Policy"
             onPress={() => router.push('/privacy' as never)}
           />
-        </Card>
+        </Section>
 
         {/* Switch to Client Mode */}
         <TouchableOpacity
@@ -448,7 +429,7 @@ const styles = StyleSheet.create({
 
   scroll: {
     padding: 16,
-    gap: 12,
+    gap: 8,
   },
 
   // Profile card
@@ -527,13 +508,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 
+  // Section wrapper
+  section: {
+    gap: 8,
+    marginTop: 8,
+  },
+
   // Section label
   sectionLabel: {
     fontSize: 11,
     fontWeight: '600',
+    textTransform: 'uppercase',
     letterSpacing: 0.7,
     paddingHorizontal: 4,
-    marginBottom: -4,
   },
 
   // Card
@@ -563,16 +550,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexShrink: 0,
   },
-  rowLabels: {
-    flex: 1,
-    gap: 1,
-  },
   rowLabel: {
     fontSize: 15,
     fontWeight: '500',
-  },
-  rowSublabel: {
-    fontSize: 12,
   },
   rowRight: {
     flexDirection: 'row',
