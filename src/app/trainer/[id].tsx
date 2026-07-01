@@ -1,7 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { Award, BadgeCheck, ChevronLeft, Clock, Heart, MapPin, MessageCircle, Star, Timer, Users, Zap } from 'lucide-react-native';
-import { useState } from 'react';
+import { BadgeCheck, ChevronLeft, Heart, MapPin, MessageCircle, Star, Timer, Users } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,7 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/context/ThemeContext';
-import { useTrainerStats } from '@/context/TrainerStatsContext';
+import { supabase } from '@/lib/supabase';
 
 const BLUE = '#208AEF';
 
@@ -21,154 +22,35 @@ const AVATAR_COLORS = [
   '#B5C9E4', '#C8DDB5', '#E4CDB5', '#D4B5E4', '#B5E4D4',
   '#E4B5C8', '#C8B5E4', '#E4E4B5',
 ];
-function avatarColor(id: string) {
-  return AVATAR_COLORS[parseInt(id, 10) % AVATAR_COLORS.length];
+function avatarColor(seed: string) {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+function initials(fullName: string) {
+  return fullName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(w => w[0].toUpperCase())
+    .join('');
 }
 
-interface Review {
+interface TrainerRow {
   id: string;
-  name: string;
-  initials: string;
-  rating: number;
-  comment: string;
-  date: string;
+  full_name: string;
+  bio: string | null;
+  sport_id: string | null;
+  city: string | null;
+  price_per_hour: number | null;
+  rating: number | null;
+  review_count: number | null;
+  experience_years: number | null;
+  is_verified: boolean | null;
+  avatar_url: string | null;
+  created_at: string | null;
+  sports: { name: string; emoji: string } | { name: string; emoji: string }[] | null;
 }
-
-interface TrainerProfile {
-  id: string;
-  name: string;
-  initials: string;
-  sport: string;
-  emoji: string;
-  rating: number;
-  reviewCount: number;
-  online: boolean;
-  price: number;
-  clients: number;
-  experience: number;
-  city: string;
-  bio: string;
-  specializations: string[];
-  availability: boolean[];
-  reviews: Review[];
-  verified: boolean;
-  sessionDuration: number;
-}
-
-// All trainers match the ids and data shown in the home feed (src/data/trainers.ts)
-const TRAINERS_DATA: Record<string, TrainerProfile> = {
-  '1': {
-    id: '1', name: 'Mantas Petrauskas', initials: 'MP', sport: 'Football', emoji: '⚽',
-    verified: true, online: true, rating: 4.8, reviewCount: 47,
-    price: 25, clients: 128, experience: 5, city: 'Vilnius', sessionDuration: 60,
-    bio: 'Professional football coach with 5 years of experience training players of all skill levels. Former semi-professional player, now dedicated to helping others improve through structured, personalized sessions focused on technique and tactical awareness.',
-    specializations: ['Dribbling', 'Shooting', 'Tactics', 'Fitness', 'Set pieces'],
-    availability: [true, true, false, true, true, true, false],
-    reviews: [
-      { id: 'r1', name: 'Lukas V.',    initials: 'LV', rating: 5, date: 'Dec 2024', comment: 'Excellent coach! My technique improved significantly after just 4 sessions. Highly recommend to anyone serious about football.' },
-      { id: 'r2', name: 'Gabrielė M.', initials: 'GM', rating: 5, date: 'Nov 2024', comment: 'Very professional and patient. He adapts training to your level and always pushes you forward constructively.' },
-      { id: 'r3', name: 'Tadas K.',    initials: 'TK', rating: 4, date: 'Oct 2024', comment: 'Great drills and good energy. Would love even more tactical work but overall very satisfied.' },
-    ],
-  },
-  '2': {
-    id: '2', name: 'Rūta Kazlauskaitė', initials: 'RK', sport: 'Yoga', emoji: '🧘',
-    verified: true, online: true, rating: 4.9, reviewCount: 83,
-    price: 30, clients: 214, experience: 7, city: 'Vilnius', sessionDuration: 60,
-    bio: 'Certified yoga instructor trained in Vinyasa and Hatha traditions with 7 years of teaching experience. I believe yoga is for everybody — my sessions are welcoming, mindful, and tailored to each student\'s body and goals.',
-    specializations: ['Vinyasa flow', 'Hatha', 'Breathwork', 'Meditation', 'Flexibility'],
-    availability: [false, true, true, true, false, true, true],
-    reviews: [
-      { id: 'r1', name: 'Simona P.',  initials: 'SP', rating: 5, date: 'Jan 2025', comment: 'Rūta is incredible. After two months my flexibility and mindfulness have transformed completely.' },
-      { id: 'r2', name: 'Andrius B.', initials: 'AB', rating: 5, date: 'Dec 2024', comment: 'I was skeptical about yoga but Rūta made it accessible and genuinely enjoyable. My back pain is gone!' },
-    ],
-  },
-  '3': {
-    id: '3', name: 'Tomas Žukauskas', initials: 'TŽ', sport: 'Basketball', emoji: '🏀',
-    verified: false, online: false, rating: 4.7, reviewCount: 36,
-    price: 30, clients: 95, experience: 4, city: 'Kaunas', sessionDuration: 60,
-    bio: 'Basketball trainer with a background in Lithuanian youth leagues. I focus on building solid fundamentals while making every session competitive and fun. Great fit for beginners and intermediate players looking to level up.',
-    specializations: ['Ball handling', 'Shooting form', 'Defense', 'Footwork', 'Court vision'],
-    availability: [false, true, true, false, true, true, false],
-    reviews: [
-      { id: 'r1', name: 'Mantvydas J.', initials: 'MJ', rating: 5, date: 'Nov 2024', comment: 'Tomas completely rebuilt my shooting form. My percentage at practice went from 40% to 68% in 6 weeks.' },
-      { id: 'r2', name: 'Viktorija L.', initials: 'VL', rating: 4, date: 'Oct 2024', comment: 'Fun and structured sessions. Tomas is great at explaining the why behind each drill. Very knowledgeable.' },
-    ],
-  },
-  '4': {
-    id: '4', name: 'Aistė Mikalauskaitė', initials: 'AM', sport: 'Tennis', emoji: '🎾',
-    verified: false, online: false, rating: 4.6, reviewCount: 29,
-    price: 35, clients: 74, experience: 6, city: 'Vilnius', sessionDuration: 60,
-    bio: 'Former competitive tennis player turned coach. I specialize in technique refinement and match strategy for intermediate to advanced players. My sessions are data-driven — I use video analysis to accelerate improvement.',
-    specializations: ['Serve mechanics', 'Baseline game', 'Volleys', 'Match strategy', 'Video analysis'],
-    availability: [true, true, false, false, true, true, false],
-    reviews: [
-      { id: 'r1', name: 'Karolis D.', initials: 'KD', rating: 5, date: 'Dec 2024', comment: 'The video analysis sessions are a game changer. I could finally see what I was doing wrong on my backhand.' },
-      { id: 'r2', name: 'Neringa T.', initials: 'NT', rating: 4, date: 'Nov 2024', comment: 'Very technical coach, thorough and detail-oriented. Perfect if you\'re serious about improving your game.' },
-    ],
-  },
-  '5': {
-    id: '5', name: 'Darius Paulauskas', initials: 'DP', sport: 'Boxing', emoji: '🥊',
-    verified: true, online: true, rating: 4.9, reviewCount: 61,
-    price: 28, clients: 183, experience: 8, city: 'Klaipėda', sessionDuration: 60,
-    bio: 'Licensed boxing coach with 8 years of experience training amateurs and fitness enthusiasts. My sessions combine technical boxing skills with high-intensity conditioning — you\'ll leave every session stronger and more confident.',
-    specializations: ['Footwork', 'Combinations', 'Defense', 'Conditioning', 'Sparring'],
-    availability: [true, true, true, false, true, false, true],
-    reviews: [
-      { id: 'r1', name: 'Robertas V.',  initials: 'RV', rating: 5, date: 'Jan 2025', comment: 'Best decision I made this year. Lost 8 kg and learned to actually box. Darius is motivating and technically excellent.' },
-      { id: 'r2', name: 'Ieva S.',      initials: 'IS', rating: 5, date: 'Dec 2024', comment: 'I\'m a complete beginner and never felt intimidated. Darius is encouraging while still pushing you hard. 10/10.' },
-      { id: 'r3', name: 'Mindaugas P.', initials: 'MP', rating: 5, date: 'Nov 2024', comment: 'My cardio and punch technique both improved massively in just 8 weeks.' },
-    ],
-  },
-  '6': {
-    id: '6', name: 'Laura Stankevičiūtė', initials: 'LS', sport: 'CrossFit', emoji: '💪',
-    verified: false, online: true, rating: 4.5, reviewCount: 22,
-    price: 35, clients: 67, experience: 3, city: 'Vilnius', sessionDuration: 45,
-    bio: 'CrossFit Level 2 certified coach passionate about functional fitness. I design scalable workouts for all fitness levels — whether you\'re a complete beginner or chasing a PR, my sessions will challenge and progress you every time.',
-    specializations: ['Olympic lifting', 'HIIT', 'Mobility', 'Strength', 'Endurance'],
-    availability: [true, false, true, false, true, true, false],
-    reviews: [
-      { id: 'r1', name: 'Paulius A.',  initials: 'PA', rating: 5, date: 'Jan 2025', comment: 'Laura\'s workouts are intense but perfectly scaled. I\'ve gone from struggling with pull-ups to doing 15 in a row!' },
-      { id: 'r2', name: 'Kristina M.', initials: 'KM', rating: 4, date: 'Dec 2024', comment: 'Great energy and very attentive to form. CrossFit finally clicked for me with Laura\'s guidance.' },
-    ],
-  },
-  '7': {
-    id: '7', name: 'Erikas Butkus', initials: 'EB', sport: 'Running', emoji: '🏃',
-    verified: false, online: false, rating: 4.7, reviewCount: 41,
-    price: 28, clients: 112, experience: 5, city: 'Kaunas', sessionDuration: 30,
-    bio: 'Running coach specializing in gait analysis and injury prevention. Whether you\'re training for your first 5K or aiming for a marathon PB, I\'ll build a program that gets you to the finish line faster and healthier.',
-    specializations: ['Gait analysis', 'Tempo runs', 'Marathon prep', 'Interval training', 'Injury prevention'],
-    availability: [true, false, true, true, false, true, true],
-    reviews: [
-      { id: 'r1', name: 'Raimondas K.', initials: 'RK', rating: 5, date: 'Jan 2025', comment: 'Erikas identified my overstriding issue in the first session. Fixed it in 3 weeks and knocked 4 minutes off my 10K.' },
-      { id: 'r2', name: 'Jurgita V.',   initials: 'JV', rating: 5, date: 'Nov 2024', comment: 'Ran my first half-marathon thanks to Erikas\'s training plan. Crossed the line with energy to spare!' },
-    ],
-  },
-  '8': {
-    id: '8', name: 'Ingrida Vaitkutė', initials: 'IV', sport: 'Swimming', emoji: '🏊',
-    verified: true, online: true, rating: 4.8, reviewCount: 55,
-    price: 55, clients: 149, experience: 9, city: 'Vilnius', sessionDuration: 60,
-    bio: 'Competitive swimmer turned coach with 9 years of professional experience. I coach all strokes and skill levels, from adult beginners who want to feel confident in the water to competitive swimmers chasing personal bests.',
-    specializations: ['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Open water'],
-    availability: [true, true, false, true, true, false, true],
-    reviews: [
-      { id: 'r1', name: 'Vida T.',    initials: 'VT', rating: 5, date: 'Jan 2025', comment: 'I was terrified of the water. Ingrida taught me to swim properly in just 8 sessions. Life-changing!' },
-      { id: 'r2', name: 'Saulius B.', initials: 'SB', rating: 5, date: 'Dec 2024', comment: 'My freestyle technique improved enormously. Ingrida has a gift for breaking down complex movements into simple steps.' },
-      { id: 'r3', name: 'Živilė K.',  initials: 'ŽK', rating: 4, date: 'Nov 2024', comment: 'Very professional and patient. Pool timing is always perfect and sessions are well-structured.' },
-    ],
-  },
-  '9': {
-    id: '9', name: 'Aurimas Grigas', initials: 'AG', sport: 'Martial Arts', emoji: '🥋',
-    verified: false, online: false, rating: 4.6, reviewCount: 33,
-    price: 38, clients: 88, experience: 6, city: 'Vilnius', sessionDuration: 90,
-    bio: 'Certified martial arts instructor with black belts in Karate and Judo, and MMA coaching experience. I teach self-defense fundamentals alongside traditional discipline and respect for the art.',
-    specializations: ['Karate', 'Judo', 'MMA basics', 'Self-defense', 'Discipline & respect'],
-    availability: [false, true, true, false, true, false, true],
-    reviews: [
-      { id: 'r1', name: 'Edvinas P.',  initials: 'EP', rating: 5, date: 'Dec 2024', comment: 'Aurimas is the real deal. His technique is flawless and his teaching style is incredibly clear and patient.' },
-      { id: 'r2', name: 'Kotryna S.',  initials: 'KS', rating: 4, date: 'Nov 2024', comment: 'I joined for self-defense and stayed for the art. Aurimas made me love martial arts.' },
-    ],
-  },
-};
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -197,18 +79,61 @@ export default function TrainerProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
-  const trainerStats    = useTrainerStats();
   const [isFavorite, setIsFavorite] = useState(false);
+  const [trainer, setTrainer] = useState<TrainerRow | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const rawProfile = TRAINERS_DATA[id] ?? TRAINERS_DATA['1'];
-  const profile    = id === '1'
-    ? { ...rawProfile, rating: trainerStats.rating, clients: trainerStats.totalClients }
-    : rawProfile;
+  useEffect(() => {
+    async function fetchTrainer() {
+      setLoading(true);
+      setError(null);
+      const { data, error: err } = await supabase
+        .from('trainers')
+        .select('id, full_name, bio, sport_id, city, price_per_hour, rating, review_count, experience_years, is_verified, avatar_url, created_at, sports(name, emoji)')
+        .eq('id', id)
+        .single();
+      if (err) {
+        setError(err.message);
+      } else {
+        setTrainer(data as TrainerRow);
+      }
+      setLoading(false);
+    }
+    if (id) fetchTrainer();
+  }, [id]);
 
   function fmtDuration(mins: number): string {
     if (mins < 60) return `${mins} min`;
     return `${mins / 60}h`;
   }
+
+  const sport = (() => {
+    if (!trainer?.sports) return { name: '', emoji: '' };
+    const raw = trainer.sports;
+    return Array.isArray(raw) ? (raw[0] ?? { name: '', emoji: '' }) : raw;
+  })();
+
+  const profile = trainer ? {
+    id: trainer.id,
+    name: trainer.full_name,
+    initials: initials(trainer.full_name),
+    sport: sport.name,
+    emoji: sport.emoji,
+    rating: trainer.rating ?? 0,
+    reviewCount: trainer.review_count ?? 0,
+    online: false,
+    price: trainer.price_per_hour ?? 0,
+    clients: 0,
+    experience: trainer.experience_years ?? 0,
+    city: trainer.city ?? '',
+    bio: trainer.bio ?? '',
+    specializations: [] as string[],
+    availability: [false, false, false, false, false, false, false],
+    reviews: [] as { id: string; name: string; initials: string; rating: number; comment: string; date: string }[],
+    verified: trainer.is_verified ?? false,
+    sessionDuration: 60,
+  } : null;
 
   const bg           = isDarkMode ? '#111827' : '#FFFFFF';
   const cardBg       = isDarkMode ? '#1F2937' : '#F9FAFB';
@@ -217,6 +142,29 @@ export default function TrainerProfileScreen() {
   const borderColor  = isDarkMode ? '#374151' : '#F3F4F6';
   const chipBg       = isDarkMode ? '#1F2937' : '#F3F4F6';
   const chipText     = isDarkMode ? '#D1D5DB' : '#374151';
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centered, { backgroundColor: bg }]}>
+        <ActivityIndicator size="large" color={BLUE} />
+      </View>
+    );
+  }
+
+  if (error || !profile) {
+    return (
+      <View style={[styles.container, styles.centered, { backgroundColor: bg }]}>
+        <TouchableOpacity
+          style={[styles.iconBtn, { backgroundColor: cardBg, position: 'absolute', top: insets.top + 8, left: 16 }]}
+          onPress={() => router.back()}>
+          <ChevronLeft size={22} color={textPrimary} strokeWidth={2} />
+        </TouchableOpacity>
+        <Text style={[styles.errorText, { color: textSub }]}>
+          {error ?? 'Trainer not found'}
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
@@ -403,6 +351,15 @@ export default function TrainerProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 15,
+    textAlign: 'center',
+    paddingHorizontal: 32,
   },
 
   // Header
