@@ -2,6 +2,7 @@ export interface Trainer {
   id: string;
   name: string;
   sport: string;
+  sport_emoji?: string;
   rating: number;
   price: number;
   prices?: number[];
@@ -41,5 +42,6 @@ export const AVATAR_COLORS = [
 ];
 
 export function avatarColor(id: string) {
-  return AVATAR_COLORS[parseInt(id, 10) % AVATAR_COLORS.length];
+  const n = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return AVATAR_COLORS[n % AVATAR_COLORS.length];
 }

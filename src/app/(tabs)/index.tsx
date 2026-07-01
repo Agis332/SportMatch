@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { BadgeCheck, ChevronDown, Heart, MapPin, Search, Star, User, Users, X } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Modal,
   Pressable,
@@ -24,7 +25,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '@/context/LanguageContext';
 import { CITIES, useLocation } from '@/context/LocationContext';
 import { useTheme } from '@/context/ThemeContext';
-import { AVATAR_COLORS, SPORT_EMOJI, TRAINERS, avatarColor, type Trainer } from '@/data/trainers';
+import { AVATAR_COLORS, avatarColor, type Trainer } from '@/data/trainers';
+import { supabase } from '@/lib/supabase';
 import { toggleFavorite, useFavoriteIds } from '@/store/favorites';
 
 const BLUE = '#208AEF';
@@ -126,7 +128,7 @@ function TrainerCard({ item, isFavorite, onFavorite }: {
             )}
           </View>
           <Text style={[styles.trainerSport, { color: metaColor }]}>
-            {SPORT_EMOJI[item.sport] ? `${SPORT_EMOJI[item.sport]} ` : ''}{item.sport}
+            {item.sport_emoji ? `${item.sport_emoji} ` : ''}{item.sport}
           </Text>
           <View style={styles.cardMeta}>
             <Star size={12} color="#F59E0B" fill="#F59E0B" strokeWidth={0} />
@@ -167,10 +169,54 @@ export default function HomeScreen() {
   const favorites = useFavoriteIds();
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [trainers, setTrainers] = useState<Trainer[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchTrainers() {
+      const { data, error } = await supabase
+        .from('trainers')
+        .select('id, full_name, rating, price_per_hour, city, is_verified, sports(name, emoji)');
+
+      if (error) {
+        console.error('[home] fetch trainers:', error.message);
+        setLoading(false);
+        return;
+      }
+
+      setTrainers(
+        (data ?? []).map(row => {
+          const raw = row.sports as unknown;
+          const sport = Array.isArray(raw)
+            ? (raw[0] as { name: string; emoji: string } | undefined)
+            : (raw as { name: string; emoji: string } | null);
+          return {
+            id: String(row.id),
+            name: row.full_name ?? '',
+            sport: sport?.name ?? '',
+            sport_emoji: sport?.emoji ?? '',
+            rating: row.rating,
+            price: row.price_per_hour,
+            city: row.city,
+            verified: row.is_verified,
+            initials: (row.full_name ?? '')
+              .split(' ')
+              .map((n: string) => n[0] ?? '')
+              .join('')
+              .slice(0, 2)
+              .toUpperCase(),
+          };
+        }),
+      );
+      setLoading(false);
+    }
+
+    fetchTrainers();
+  }, []);
 
   const filteredTrainers = useMemo(
     () =>
-      TRAINERS.filter(t => {
+      trainers.filter(t => {
         const matchesCity = t.city === selectedCity;
         const matchesSport = selectedSport === 'All' || t.sport === selectedSport;
         const matchesSearch = !searchQuery.trim() ||
@@ -178,7 +224,7 @@ export default function HomeScreen() {
           t.sport.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesCity && matchesSport && matchesSearch;
       }),
-    [selectedCity, selectedSport, searchQuery],
+    [trainers, selectedCity, selectedSport, searchQuery],
   );
 
   const bg = isDarkMode ? '#111827' : '#FFFFFF';
@@ -279,25 +325,31 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* Trainer list */}
-      <FlatList
-        data={filteredTrainers}
-        keyExtractor={item => item.id}
-        contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 16 }]}
-        showsVerticalScrollIndicator={false}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={[styles.emptyText, { color: textSecondary }]}>{t.home.noTrainers}</Text>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <TrainerCard
-            item={item}
-            isFavorite={favorites.has(item.id)}
-            onFavorite={() => toggleFavorite(item.id)}
-          />
-        )}
-      />
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={BLUE} />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredTrainers}
+          keyExtractor={item => item.id}
+          contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 16 }]}
+          showsVerticalScrollIndicator={false}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Text style={[styles.emptyText, { color: textSecondary }]}>{t.home.noTrainers}</Text>
+            </View>
+          }
+          renderItem={({ item }) => (
+            <TrainerCard
+              item={item}
+              isFavorite={favorites.has(item.id)}
+              onFavorite={() => toggleFavorite(item.id)}
+            />
+          )}
+        />
+      )}
 
       {/* City picker */}
       <Modal
@@ -451,6 +503,11 @@ const styles = StyleSheet.create({
   },
 
   // Trainer list
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   list: {
     paddingHorizontal: 20,
     paddingTop: 4,
