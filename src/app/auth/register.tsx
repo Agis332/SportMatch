@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { Check, Eye, EyeOff, Lock, Mail, User } from 'lucide-react-native';
 import { useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -54,9 +55,24 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const canSubmit = firstName.trim() && lastName.trim() && email.trim() &&
     password.length >= 6 && password === confirmPassword && agreedToTerms;
+
+  async function handleRegister() {
+    setLoading(true);
+    setError(null);
+    const { error: err } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: { data: { first_name: firstName.trim(), last_name: lastName.trim() } },
+    });
+    setLoading(false);
+    if (err) { setError(err.message); return; }
+    router.replace('/(tabs)');
+  }
 
   return (
     <KeyboardAvoidingView
@@ -172,12 +188,15 @@ export default function RegisterScreen() {
             </Text>
           </TouchableOpacity>
 
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
           {/* Submit */}
           <TouchableOpacity
-            style={[styles.primaryBtn, !canSubmit && styles.primaryBtnDisabled]}
-            activeOpacity={canSubmit ? 0.85 : 1}
-            disabled={!canSubmit}>
-            <Text style={styles.primaryBtnText}>Create Account</Text>
+            style={[styles.primaryBtn, (!canSubmit || loading) && styles.primaryBtnDisabled]}
+            onPress={handleRegister}
+            activeOpacity={canSubmit && !loading ? 0.85 : 1}
+            disabled={!canSubmit || loading}>
+            <Text style={styles.primaryBtnText}>{loading ? 'Creating account…' : 'Create Account'}</Text>
           </TouchableOpacity>
         </View>
 

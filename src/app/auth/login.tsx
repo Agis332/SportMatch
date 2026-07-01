@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react-native';
 import { useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -30,6 +31,17 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleLogin() {
+    setLoading(true);
+    setError(null);
+    const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    setLoading(false);
+    if (err) { setError(err.message); return; }
+    router.replace('/(tabs)');
+  }
 
   return (
     <KeyboardAvoidingView
@@ -100,9 +112,15 @@ export default function LoginScreen() {
             <Text style={styles.forgotText}>Forgot Password?</Text>
           </TouchableOpacity>
 
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
           {/* Login button */}
-          <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.85}>
-            <Text style={styles.primaryBtnText}>Log In</Text>
+          <TouchableOpacity
+            style={[styles.primaryBtn, loading && styles.primaryBtnDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+            activeOpacity={0.85}>
+            <Text style={styles.primaryBtnText}>{loading ? 'Logging in…' : 'Log In'}</Text>
           </TouchableOpacity>
 
           <Divider />
@@ -221,6 +239,13 @@ const styles = StyleSheet.create({
     color: BLUE,
   },
 
+  errorText: {
+    fontSize: 13,
+    color: '#EF4444',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+
   // Primary button
   primaryBtn: {
     backgroundColor: BLUE,
@@ -233,6 +258,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
+  },
+  primaryBtnDisabled: {
+    backgroundColor: '#D1D5DB',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   primaryBtnText: {
     color: '#FFFFFF',
