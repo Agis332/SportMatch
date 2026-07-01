@@ -2,6 +2,7 @@ import { StatusBar } from 'react-native';
 import { Stack } from 'expo-router';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { AuthProvider } from '@/context/AuthContext';
 import { BookingProvider } from '@/context/BookingContext';
 import { TrainerStatsProvider } from '@/context/TrainerStatsContext';
 import { WalletProvider } from '@/context/WalletContext';
@@ -24,22 +25,24 @@ function AppShell() {
 
 export default function RootLayout() {
   return (
-    <LanguageProvider>
-      <ThemeProvider>
-        <LocationProvider>
-          <NotificationsProvider>
-            <TrainerProfileProvider>
-              <BookingProvider>
-                <WalletProvider>
-                  <TrainerStatsProvider>
-                    <AppShell />
-                  </TrainerStatsProvider>
-                </WalletProvider>
-              </BookingProvider>
-            </TrainerProfileProvider>
-          </NotificationsProvider>
-        </LocationProvider>
-      </ThemeProvider>
-    </LanguageProvider>
+    <AuthProvider>
+      <LanguageProvider>
+        <ThemeProvider>
+          <LocationProvider>
+            <NotificationsProvider>
+              <TrainerProfileProvider>
+                <BookingProvider>
+                  <WalletProvider>
+                    <TrainerStatsProvider>
+                      <AppShell />
+                    </TrainerStatsProvider>
+                  </WalletProvider>
+                </BookingProvider>
+              </TrainerProfileProvider>
+            </NotificationsProvider>
+          </LocationProvider>
+        </ThemeProvider>
+      </LanguageProvider>
+    </AuthProvider>
   );
 }
