@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { Check, ChevronLeft, Clock, CreditCard, MapPin, User } from 'lucide-react-native';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -18,6 +18,9 @@ import { useBooking } from '@/context/BookingContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
 import { getTrainerMockProfile, type Schedule } from '@/context/TrainerProfileContext';
+import { supabase } from '@/lib/supabase';
+
+const TEST_CLIENT_ID = '00000000-0000-0000-0000-000000000001';
 
 const BLUE = '#208AEF';
 
@@ -147,11 +150,19 @@ export default function BookingScreen() {
 
   const { bookSlot, isBooked } = useBooking();
 
-  // Load the booked trainer's availability from mock profiles
+  // Load schedule/sessionDuration from mock profiles (not yet in Supabase)
   const trainerProfile  = useMemo(() => getTrainerMockProfile(id), [id]);
-  const locations       = trainerProfile?.locations ?? [];
   const schedule        = (trainerProfile?.schedule  ?? {}) as Schedule;
   const sessionDuration = trainerProfile?.sessionDuration ?? 60;
+
+  const [locations, setLocations] = useState<{ id: string; city: string; address: string }[]>([]);
+  useEffect(() => {
+    supabase
+      .from('locations')
+      .select('id, city, address')
+      .eq('trainer_id', id)
+      .then(({ data }) => setLocations(data ?? []));
+  }, [id]);
 
   const trainer  = TRAINER_INFO[id] ?? DEFAULT_TRAINER;
   const allDates = useMemo(() => generateDates(14), []);
@@ -168,6 +179,8 @@ export default function BookingScreen() {
   const [editingDetails,  setEditingDetails]  = useState(false);
   const [saveDetails,     setSaveDetails]     = useState(true);
   const [paymentMethodId, setPaymentMethodId] = useState(PAYMENT_METHODS[0].id);
+  const [saving,          setSaving]          = useState(false);
+  const [saveError,       setSaveError]       = useState<string | null>(null);
 
   const bg          = isDarkMode ? '#111827' : '#FFFFFF';
   const cardBg      = isDarkMode ? '#1F2937' : '#F9FAFB';
@@ -216,9 +229,38 @@ export default function BookingScreen() {
     else { router.back(); }
   }
 
-  function handleNext() {
-    if (step < 4) { setStep(s => (s + 1) as 1|2|3|4|5); scrollRef.current?.scrollTo({ y: 0, animated: false }); }
-    else { bookSlot(id, selectedDate!, selectedSlot!.start); setStep(5); }
+  async function handleNext() {
+    if (step < 4) {
+      setStep(s => (s + 1) as 1|2|3|4|5);
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+      return;
+    }
+
+    setSaving(true);
+    setSaveError(null);
+
+    const [hours, minutes] = selectedSlot!.start.split(':').map(Number);
+    const scheduledAt = new Date(selectedDate!);
+    scheduledAt.setHours(hours, minutes, 0, 0);
+
+    const { error } = await supabase.from('bookings').insert({
+      client_id:    TEST_CLIENT_ID,
+      trainer_id:   id,
+      scheduled_at: scheduledAt.toISOString(),
+      status:       'pending',
+      price:        totalPrice,
+      notes:        notes.trim() || null,
+    });
+
+    setSaving(false);
+
+    if (error) {
+      setSaveError(error.message);
+      return;
+    }
+
+    bookSlot(id, selectedDate!, selectedSlot!.start);
+    setStep(5);
   }
 
   // ── Step 5: Success ────────────────────────────────────────────────────────
@@ -650,13 +692,16 @@ export default function BookingScreen() {
 
       {/* Bottom bar */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12, backgroundColor: bg, borderTopColor: borderColor }]}>
+        {saveError ? (
+          <Text style={styles.saveErrorText}>{saveError}</Text>
+        ) : null}
         <TouchableOpacity
-          style={[styles.actionBtn, !canProceed && styles.actionBtnDisabled]}
+          style={[styles.actionBtn, (!canProceed || saving) && styles.actionBtnDisabled]}
           onPress={handleNext}
-          disabled={!canProceed}
+          disabled={!canProceed || saving}
           activeOpacity={0.85}>
           <Text style={styles.actionBtnText}>
-            {step === 4 ? 'Confirm & Pay' : t.booking.next}
+            {saving ? 'Saving…' : step === 4 ? 'Confirm & Pay' : t.booking.next}
           </Text>
         </TouchableOpacity>
       </View>
@@ -786,7 +831,8 @@ const styles = StyleSheet.create({
   addCardBtn:      { borderRadius: 14, borderWidth: 1, paddingVertical: 14, alignItems: 'center' },
   addCardBtnText:  { fontSize: 15, fontWeight: '600' },
 
-  bottomBar:       { paddingHorizontal: 20, paddingTop: 14, borderTopWidth: StyleSheet.hairlineWidth },
+  bottomBar:       { paddingHorizontal: 20, paddingTop: 14, borderTopWidth: StyleSheet.hairlineWidth, gap: 8 },
+  saveErrorText:   { fontSize: 13, color: '#EF4444', textAlign: 'center' },
   actionBtn:       { backgroundColor: BLUE, borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
   actionBtnDisabled:{ backgroundColor: '#D1D5DB' },
   actionBtnText:   { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
