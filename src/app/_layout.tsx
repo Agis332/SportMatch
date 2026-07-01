@@ -1,3 +1,4 @@
+import { StatusBar } from 'react-native';
 import { Stack } from 'expo-router';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
@@ -7,8 +8,19 @@ import { WalletProvider } from '@/context/WalletContext';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { LocationProvider } from '@/context/LocationContext';
 import { NotificationsProvider } from '@/context/NotificationsContext';
-import { ThemeProvider } from '@/context/ThemeContext';
+import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { TrainerProfileProvider } from '@/context/TrainerProfileContext';
+
+function AppShell() {
+  const { isDarkMode } = useTheme();
+  return (
+    <>
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+      <AnimatedSplashOverlay />
+      <Stack screenOptions={{ headerShown: false }} />
+    </>
+  );
+}
 
 export default function RootLayout() {
   return (
@@ -20,8 +32,7 @@ export default function RootLayout() {
               <BookingProvider>
                 <WalletProvider>
                   <TrainerStatsProvider>
-                    <AnimatedSplashOverlay />
-                    <Stack screenOptions={{ headerShown: false }} />
+                    <AppShell />
                   </TrainerStatsProvider>
                 </WalletProvider>
               </BookingProvider>
