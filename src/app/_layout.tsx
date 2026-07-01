@@ -1,8 +1,9 @@
+import { useEffect } from 'react';
 import { StatusBar } from 'react-native';
-import { Stack } from 'expo-router';
+import { router, Stack, useSegments } from 'expo-router';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import { AuthProvider } from '@/context/AuthContext';
+import { AuthProvider, useAuthContext } from '@/context/AuthContext';
 import { BookingProvider } from '@/context/BookingContext';
 import { TrainerStatsProvider } from '@/context/TrainerStatsContext';
 import { WalletProvider } from '@/context/WalletContext';
@@ -14,6 +15,19 @@ import { TrainerProfileProvider } from '@/context/TrainerProfileContext';
 
 function AppShell() {
   const { isDarkMode } = useTheme();
+  const { currentUser, loading } = useAuthContext();
+  const segments = useSegments();
+
+  useEffect(() => {
+    if (loading) return;
+    const inAuthGroup = segments[0] === 'auth';
+    if (!currentUser && !inAuthGroup) {
+      router.replace('/auth/login');
+    } else if (currentUser && inAuthGroup) {
+      router.replace('/(tabs)');
+    }
+  }, [currentUser, loading, segments]);
+
   return (
     <>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
