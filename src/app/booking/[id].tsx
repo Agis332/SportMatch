@@ -14,31 +14,30 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useAuthContext } from '@/context/AuthContext';
 import { useBooking } from '@/context/BookingContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
-import { getTrainerMockProfile, type Schedule } from '@/context/TrainerProfileContext';
 import { supabase } from '@/lib/supabase';
-
-const TEST_CLIENT_ID = '00000000-0000-0000-0000-000000000001';
 
 const BLUE = '#208AEF';
 
-// ─── Static data ─────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
-const TRAINER_INFO: Record<string, { name: string; sport: string; emoji: string; price: number }> = {
-  '1': { name: 'Mantas Petrauskas',    sport: 'Football',     emoji: '⚽', price: 35 },
-  '2': { name: 'Rūta Kazlauskaitė',   sport: 'Yoga',         emoji: '🧘', price: 45 },
-  '3': { name: 'Lukas Jankauskas',    sport: 'Boxing',       emoji: '🥊', price: 40 },
-  '4': { name: 'Aistė Rimkutė',      sport: 'Running',      emoji: '🏃', price: 25 },
-  '5': { name: 'Jonas Kazlauskas',    sport: 'Tennis',       emoji: '🎾', price: 50 },
-  '6': { name: 'Laura Stankevičiūtė', sport: 'CrossFit',     emoji: '💪', price: 35 },
-  '7': { name: 'Erikas Butkus',       sport: 'Swimming',     emoji: '🏊', price: 55 },
-  '8': { name: 'Ingrida Vaitkutė',   sport: 'Martial Arts', emoji: '🥋', price: 38 },
-  '9': { name: 'Aurimas Grigas',      sport: 'Volleyball',   emoji: '🏐', price: 30 },
-};
+interface AvailabilityRow {
+  id: string;
+  trainer_id: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  session_duration: number;
+}
 
-const DEFAULT_TRAINER = { name: 'Trainer', sport: 'Sport', emoji: '🏅', price: 35 };
+interface TrainerRow {
+  full_name: string;
+  price_per_hour: number | null;
+  sports: { name: string; emoji: string } | { name: string; emoji: string }[] | null;
+}
 
 const MOCK_PROFILE = {
   firstName: 'Augustinas',
@@ -53,7 +52,6 @@ const PAYMENT_METHODS = [
   { id: 'apple_pay', label: 'Apple Pay',             brand: 'Apple',      expiry: null    },
 ];
 
-const JS_DAY_TO_KEY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_SHORT   = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAY_LONG    = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -86,6 +84,14 @@ function generateSlots(windowStart: string, windowEnd: string, durationMins: num
     result.push({ start: fmt(t), end: fmt(t + durationMins) });
   }
   return result;
+}
+
+interface SlotGroup {
+  id: string;
+  windowRange: string;
+  location: string;
+  duration: number;
+  slots: { start: string; end: string }[];
 }
 
 interface BookingSlot { start: string; end: string; location: string; }
@@ -148,24 +154,43 @@ export default function BookingScreen() {
   const { width }      = useWindowDimensions();
   const scrollRef      = useRef<ScrollView>(null);
 
+  const { currentUser }    = useAuthContext();
   const { bookSlot, isBooked } = useBooking();
 
-  // Load schedule/sessionDuration from mock profiles (not yet in Supabase)
-  const trainerProfile  = useMemo(() => getTrainerMockProfile(id), [id]);
-  const schedule        = (trainerProfile?.schedule  ?? {}) as Schedule;
-  const sessionDuration = trainerProfile?.sessionDuration ?? 60;
+  const [trainerData,    setTrainerData]    = useState<TrainerRow | null>(null);
+  const [availabilities, setAvailabilities] = useState<AvailabilityRow[]>([]);
+  const [locations,      setLocations]      = useState<{ id: string; city: string; address: string }[]>([]);
+  const [dataLoading,    setDataLoading]    = useState(true);
 
-  const [locations, setLocations] = useState<{ id: string; city: string; address: string }[]>([]);
   useEffect(() => {
-    supabase
-      .from('locations')
-      .select('id, city, address')
-      .eq('trainer_id', id)
-      .then(({ data }) => setLocations(data ?? []));
+    if (!id) return;
+    Promise.all([
+      supabase.from('trainers').select('full_name, price_per_hour, sports(name, emoji)').eq('id', id).single(),
+      supabase.from('availabilities').select('*').eq('trainer_id', id),
+      supabase.from('locations').select('id, city, address').eq('trainer_id', id),
+    ]).then(([trainerRes, availRes, locRes]) => {
+      if (trainerRes.data) setTrainerData(trainerRes.data as unknown as TrainerRow);
+      if (availRes.data)   setAvailabilities(availRes.data as AvailabilityRow[]);
+      if (locRes.data)     setLocations(locRes.data);
+      setDataLoading(false);
+    });
   }, [id]);
 
-  const trainer  = TRAINER_INFO[id] ?? DEFAULT_TRAINER;
-  const allDates = useMemo(() => generateDates(14), []);
+  const trainer = useMemo(() => {
+    if (!trainerData) return { name: 'Trainer', sport: 'Sport', emoji: '🏅', price: 35 };
+    const raw = trainerData.sports;
+    const sport = Array.isArray(raw) ? (raw[0] ?? { name: 'Sport', emoji: '🏅' }) : (raw ?? { name: 'Sport', emoji: '🏅' });
+    return {
+      name:  trainerData.full_name,
+      sport: sport.name,
+      emoji: sport.emoji,
+      price: trainerData.price_per_hour ?? 35,
+    };
+  }, [trainerData]);
+
+  const allDates = useMemo(() => generateDates(30), []);
+
+  const [newBookingId, setNewBookingId] = useState<string | null>(null);
 
   const [step,            setStep]            = useState<1|2|3|4|5>(1);
   const [selectedLocId,   setSelectedLocId]   = useState<string | null>(null);
@@ -196,20 +221,25 @@ export default function BookingScreen() {
   const selectedLocObj = locations.find(l => l.id === selectedLocId) ?? null;
   const selectedLocStr = selectedLocObj ? `${selectedLocObj.city} • ${selectedLocObj.address}` : null;
 
-  const slotGroups = useMemo(() => {
-    if (!selectedDate || !selectedLocStr) return [];
-    const dayKey = JS_DAY_TO_KEY[selectedDate.getDay()];
-    const cfg = schedule[dayKey];
-    if (!cfg?.enabled) return [];
-    return cfg.slots
-      .filter(w => !w.location || w.location === selectedLocStr)
-      .map(w => ({
-        windowId:    w.id,
-        location:    w.location || 'No location',
-        windowRange: `${w.start} – ${w.end}`,
-        slots:       generateSlots(w.start, w.end, sessionDuration),
+  const sessionDuration = useMemo(() => {
+    if (!selectedDate) return availabilities[0]?.session_duration ?? 60;
+    const a = availabilities.find(a => a.day_of_week === selectedDate.getDay());
+    return a?.session_duration ?? 60;
+  }, [selectedDate, availabilities]);
+
+  const slotGroups = useMemo((): SlotGroup[] => {
+    if (!selectedDate) return [];
+    const dow = selectedDate.getDay();
+    return availabilities
+      .filter(a => a.day_of_week === dow)
+      .map(a => ({
+        id:          a.id,
+        windowRange: `${a.start_time} – ${a.end_time}`,
+        location:    selectedLocStr ?? '',
+        duration:    a.session_duration,
+        slots:       generateSlots(a.start_time, a.end_time, a.session_duration),
       }));
-  }, [selectedDate, schedule, sessionDuration, selectedLocStr]);
+  }, [selectedDate, availabilities, selectedLocStr]);
 
   const serviceFee = Math.round(trainer.price * 0.05);
   const totalPrice = trainer.price + serviceFee;
@@ -239,18 +269,21 @@ export default function BookingScreen() {
     setSaving(true);
     setSaveError(null);
 
-    const [hours, minutes] = selectedSlot!.start.split(':').map(Number);
-    const scheduledAt = new Date(selectedDate!);
-    scheduledAt.setHours(hours, minutes, 0, 0);
+    const dateStr = selectedDate!.toISOString().slice(0, 10);
 
-    const { error } = await supabase.from('bookings').insert({
-      client_id:    TEST_CLIENT_ID,
-      trainer_id:   id,
-      scheduled_at: scheduledAt.toISOString(),
-      status:       'pending',
-      price:        totalPrice,
-      notes:        notes.trim() || null,
-    });
+    const { data: newBooking, error } = await supabase
+      .from('bookings')
+      .insert({
+        client_id:  currentUser!.id,
+        trainer_id: id,
+        date:       dateStr,
+        time_slot:  selectedSlot!.start,
+        status:     'pending',
+        price:      totalPrice,
+        notes:      notes.trim() || null,
+      })
+      .select('id')
+      .single();
 
     setSaving(false);
 
@@ -259,6 +292,7 @@ export default function BookingScreen() {
       return;
     }
 
+    setNewBookingId(newBooking.id);
     bookSlot(id, selectedDate!, selectedSlot!.start);
     setStep(5);
   }
@@ -319,25 +353,7 @@ export default function BookingScreen() {
           <View style={styles.successBtns}>
             <TouchableOpacity
               style={[styles.successBtnSecondary, { borderColor }]}
-              onPress={() => {
-                router.push({
-                  pathname: '/booking-detail/new',
-                  params: {
-                    trainerId:     id,
-                    trainerName:   trainer.name,
-                    sport:         trainer.sport,
-                    emoji:         trainer.emoji,
-                    date:          selectedDate ? formatDate(selectedDate) : '',
-                    time:          selectedSlot ? `${selectedSlot.start} – ${selectedSlot.end}` : '',
-                    location:      selectedLocObj
-                                     ? [selectedLocObj.city, selectedLocObj.address].filter(Boolean).join(', ')
-                                     : '',
-                    price:         String(trainer.price),
-                    paymentMethod: pm?.label ?? 'Card',
-                    duration:      dur,
-                  },
-                } as never);
-              }}
+              onPress={() => newBookingId && router.push(`/booking-detail/${newBookingId}` as never)}
               activeOpacity={0.85}>
               <Text style={[styles.successBtnSecondaryText, { color: textPrimary }]}>View Booking</Text>
             </TouchableOpacity>
@@ -431,13 +447,7 @@ export default function BookingScreen() {
 
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.datesRow}>
                 {allDates.map((date, i) => {
-                  const dayKey  = JS_DAY_TO_KEY[date.getDay()];
-                  const cfg     = schedule[dayKey];
-                  const isAvail = cfg?.enabled && (
-                    selectedLocStr
-                      ? cfg.slots.some(s => !s.location || s.location === selectedLocStr)
-                      : cfg.slots.length > 0
-                  );
+                  const isAvail = availabilities.some(a => a.day_of_week === date.getDay());
                   const isSel   = selectedDate?.toDateString() === date.toDateString();
                   const isToday = date.toDateString() === new Date().toDateString();
                   return (
@@ -484,7 +494,7 @@ export default function BookingScreen() {
                   slotGroups.map(group => {
                     const loc = parseLocationStr(group.location);
                     return (
-                      <View key={group.windowId} style={styles.windowGroup}>
+                      <View key={group.id} style={styles.windowGroup}>
                         <View style={styles.locationHeader}>
                           <MapPin size={14} color={BLUE} strokeWidth={2} style={{ marginTop: 1 }} />
                           <View style={styles.locationHeaderText}>
@@ -495,7 +505,7 @@ export default function BookingScreen() {
                         </View>
                         {group.slots.length === 0 ? (
                           <Text style={[styles.noSlotsText, { color: textSub }]}>
-                            Window too short for a {sessionDuration} min session
+                            Window too short for a {group.duration} min session
                           </Text>
                         ) : (
                           <View style={styles.chipsGrid}>
