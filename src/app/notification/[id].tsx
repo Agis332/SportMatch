@@ -135,8 +135,8 @@ export default function NotificationDetailScreen() {
           </>
         )}
 
-        {notif.action === 'Reply' && (
-          <TouchableOpacity style={styles.primaryBtn} onPress={() => router.push('/chat/1')} activeOpacity={0.85}>
+        {notif.action === 'Reply' && notif.trainerId && (
+          <TouchableOpacity style={styles.primaryBtn} onPress={() => router.push(`/chat/${notif.trainerId}` as never)} activeOpacity={0.85}>
             <Text style={styles.primaryBtnText}>Reply</Text>
           </TouchableOpacity>
         )}

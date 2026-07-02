@@ -407,8 +407,8 @@ export default function ChatsScreen() {
         ]}
         onPress={() => {
           markAsRead(notif.id);
-          if (notif.action === 'Reply') {
-            router.push('/chat/1');
+          if (notif.action === 'Reply' && notif.trainerId) {
+            router.push(`/chat/${notif.trainerId}` as never);
           } else {
             router.push(`/notification/${notif.id}`);
           }

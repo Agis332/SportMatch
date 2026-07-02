@@ -15,6 +15,7 @@ export interface Notification {
   time: string;
   datetime: string;
   action: string;
+  trainerId?: string;
   read: boolean;
   group: 'today' | 'earlier';
 }
@@ -61,6 +62,7 @@ const INITIAL_NOTIFICATIONS: Notification[] = [
     time: '09:26',
     datetime: 'Thu, 25 Jun 2026 · 09:26',
     action: 'Reply',
+    trainerId: '1',
     read: false,
     group: 'today',
   },
@@ -136,6 +138,7 @@ const INITIAL_NOTIFICATIONS: Notification[] = [
     time: 'Mon 08:30',
     datetime: 'Mon, 23 Jun 2026 · 08:30',
     action: 'Reply',
+    trainerId: '3',
     read: true,
     group: 'earlier',
   },

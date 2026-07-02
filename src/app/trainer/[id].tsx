@@ -333,7 +333,7 @@ export default function TrainerProfileScreen() {
           <Text style={[styles.bottomPriceNote, { color: textSub }]}>per session</Text>
         </View>
         <View style={styles.bottomRight}>
-          <TouchableOpacity style={styles.msgIconBtn} onPress={() => router.push('/chat/1')} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.msgIconBtn} onPress={() => router.push(`/chat/${profile.id}` as never)} activeOpacity={0.85}>
             <MessageCircle size={22} color={BLUE} strokeWidth={2} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.bookBtn} onPress={() => router.push(`/booking/${profile.id}`)} activeOpacity={0.85}>
