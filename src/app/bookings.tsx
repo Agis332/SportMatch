@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { Calendar, ChevronLeft, Clock, MapPin, Star, X } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Modal,
   Pressable,
   ScrollView,
@@ -13,7 +14,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useAuthContext } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
+import { supabase } from '@/lib/supabase';
 
 const BLUE = '#208AEF';
 
@@ -22,7 +25,13 @@ const AVATAR_COLORS = [
   '#E4B5C8', '#C8B5E4', '#E4E4B5',
 ];
 function avatarColor(id: string) {
-  return AVATAR_COLORS[parseInt(id, 10) % AVATAR_COLORS.length];
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function formatDate(d: Date): string {
+  return `${DAY_SHORT[d.getDay()]}, ${d.getDate()} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 const TIME_SLOTS = ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
@@ -37,7 +46,7 @@ function generateDates(count = 14): Date[] {
   });
 }
 
-type Status = 'confirmed' | 'pending' | 'completed';
+type Status = 'confirmed' | 'pending' | 'completed' | 'cancelled';
 
 interface Booking {
   id: string;
@@ -53,64 +62,49 @@ interface Booking {
   price: number;
 }
 
-const UPCOMING: Booking[] = [
-  {
-    id: '1', trainerId: '1',
-    trainerName: 'Mantas Petrauskas', initials: 'MP',
-    sport: 'Football', emoji: '⚽',
-    date: 'Tue, 24 Jun 2026', time: '10:00',
-    location: 'Vingis Park, Vilnius',
-    status: 'confirmed', price: 35,
-  },
-  {
-    id: '2', trainerId: '2',
-    trainerName: 'Rūta Kazlauskaitė', initials: 'RK',
-    sport: 'Yoga', emoji: '🧘',
-    date: 'Thu, 26 Jun 2026', time: '09:00',
-    location: 'Studio Zen, Vilnius',
-    status: 'confirmed', price: 45,
-  },
-  {
-    id: '3', trainerId: '5',
-    trainerName: 'Darius Paulauskas', initials: 'DP',
-    sport: 'Boxing', emoji: '🥊',
-    date: 'Sat, 28 Jun 2026', time: '18:00',
-    location: 'Fight Club Gym, Klaipėda',
-    status: 'pending', price: 40,
-  },
-];
+interface BookingRow {
+  id: string;
+  trainer_id: string;
+  date: string;
+  time_slot: string;
+  status: string;
+  price: number;
+  trainers: {
+    full_name: string;
+    city: string | null;
+    sports: { name: string; emoji: string } | { name: string; emoji: string }[] | null;
+  } | null;
+}
 
-const PAST: Booking[] = [
-  {
-    id: '4', trainerId: '2',
-    trainerName: 'Rūta Kazlauskaitė', initials: 'RK',
-    sport: 'Yoga', emoji: '🧘',
-    date: 'Mon, 16 Jun 2026', time: '09:00',
-    location: 'Studio Zen, Vilnius',
-    status: 'completed', price: 45,
-  },
-  {
-    id: '5', trainerId: '1',
-    trainerName: 'Mantas Petrauskas', initials: 'MP',
-    sport: 'Football', emoji: '⚽',
-    date: 'Wed, 11 Jun 2026', time: '10:00',
-    location: 'Vingis Park, Vilnius',
-    status: 'completed', price: 35,
-  },
-  {
-    id: '6', trainerId: '4',
-    trainerName: 'Aistė Mikalauskaitė', initials: 'AM',
-    sport: 'Tennis', emoji: '🎾',
-    date: 'Sat, 7 Jun 2026', time: '11:00',
-    location: 'Lazdynai Tennis Courts, Vilnius',
-    status: 'completed', price: 50,
-  },
-];
+function mapBooking(row: BookingRow): Booking {
+  const trainer = row.trainers;
+  const rawSport = trainer?.sports ?? null;
+  const sport = rawSport
+    ? (Array.isArray(rawSport) ? (rawSport[0] ?? { name: '', emoji: '' }) : rawSport)
+    : { name: '', emoji: '' };
+  const nameWords = (trainer?.full_name ?? '').split(' ').filter(Boolean);
+  const initials = nameWords.map(w => w[0].toUpperCase()).slice(0, 2).join('');
+  const [year, month, day] = row.date.split('-').map(Number);
+  return {
+    id:          row.id,
+    trainerId:   row.trainer_id,
+    trainerName: trainer?.full_name ?? '',
+    initials,
+    sport:       sport.name,
+    emoji:       sport.emoji,
+    date:        formatDate(new Date(year, month - 1, day)),
+    time:        row.time_slot,
+    location:    trainer?.city ?? '',
+    status:      row.status as Status,
+    price:       row.price,
+  };
+}
 
 const STATUS_CONFIG: Record<Status, { label: string; color: string; bg: string; darkBg: string }> = {
   confirmed: { label: 'Confirmed', color: '#16A34A', bg: '#DCFCE7', darkBg: '#052E16' },
   pending:   { label: 'Pending',   color: '#D97706', bg: '#FEF3C7', darkBg: '#2D1A00' },
   completed: { label: 'Completed', color: '#6B7280', bg: '#F3F4F6', darkBg: '#1F2937' },
+  cancelled: { label: 'Cancelled', color: '#EF4444', bg: '#FEF2F2', darkBg: '#450A0A' },
 };
 
 // ─── Booking card ─────────────────────────────────────────────────────────────
@@ -132,7 +126,7 @@ function BookingCard({ booking, isDarkMode, onLeaveReview, onReschedule }: {
   const isUpcoming = booking.status !== 'completed';
 
   return (
-    <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+    <Pressable style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]} onPress={() => router.push(`/booking-detail/${booking.id}`)}>
       {/* Trainer row */}
       <View style={styles.cardHeader}>
         <View style={[styles.avatar, { backgroundColor: avatarColor(booking.trainerId) }]}>
@@ -192,7 +186,7 @@ function BookingCard({ booking, isDarkMode, onLeaveReview, onReschedule }: {
           </TouchableOpacity>
         )}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -381,9 +375,38 @@ function RescheduleModal({ booking, isDarkMode, onClose }: {
 export default function BookingsScreen() {
   const insets = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
+  const { currentUser } = useAuthContext();
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
   const [reviewBooking, setReviewBooking] = useState<Booking | null>(null);
   const [rescheduleBooking, setRescheduleBooking] = useState<Booking | null>(null);
+  const [upcoming, setUpcoming] = useState<Booking[]>([]);
+  const [past, setPast]         = useState<Booking[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    async function fetchBookings() {
+      setLoading(true);
+      setError(null);
+      console.log('[bookings] fetching for user:', currentUser!.id);
+      const { data, error: err } = await supabase
+        .from('bookings')
+        .select('id, trainer_id, date, time_slot, status, price, trainers(full_name, city, sports(name, emoji))')
+        .eq('client_id', currentUser!.id)
+        .order('date', { ascending: true });
+      console.log('[bookings] result:', { data, error: err });
+      if (err) {
+        setError(err.message);
+      } else if (data) {
+        const mapped = (data as unknown as BookingRow[]).map(mapBooking);
+        setUpcoming(mapped.filter(b => b.status === 'confirmed' || b.status === 'pending'));
+        setPast(mapped.filter(b => b.status === 'completed' || b.status === 'cancelled'));
+      }
+      setLoading(false);
+    }
+    fetchBookings();
+  }, [currentUser]);
 
   const bg          = isDarkMode ? '#111827' : '#F3F4F6';
   const textPrimary = isDarkMode ? '#FFFFFF' : '#111827';
@@ -393,7 +416,7 @@ export default function BookingsScreen() {
   const tabBarBg    = isDarkMode ? '#1F2937' : '#FFFFFF';
   const tabBorder   = isDarkMode ? '#374151' : '#E5E7EB';
 
-  const data = tab === 'upcoming' ? UPCOMING : PAST;
+  const data = tab === 'upcoming' ? upcoming : past;
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
@@ -429,7 +452,15 @@ export default function BookingsScreen() {
       <ScrollView
         contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}>
-        {data.length === 0 ? (
+        {loading ? (
+          <View style={styles.empty}>
+            <ActivityIndicator size="large" color={BLUE} />
+          </View>
+        ) : error ? (
+          <View style={styles.empty}>
+            <Text style={[styles.emptySub, { color: textSub }]}>{error}</Text>
+          </View>
+        ) : data.length === 0 ? (
           <View style={styles.empty}>
             <Calendar size={40} color={isDarkMode ? '#374151' : '#E5E7EB'} strokeWidth={1.5} />
             <Text style={[styles.emptyTitle, { color: textPrimary }]}>No bookings yet</Text>

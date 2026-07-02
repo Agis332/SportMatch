@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { Calendar, ChevronLeft, ChevronRight, Clock, Info, MapPin, Star, X } from 'lucide-react-native';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -21,7 +22,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useAuthContext } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
+import { supabase } from '@/lib/supabase';
 
 const BLUE = '#208AEF';
 
@@ -30,7 +33,9 @@ const AVATAR_COLORS = [
   '#E4B5C8', '#C8B5E4', '#E4E4B5',
 ];
 function avatarColor(id: string) {
-  return AVATAR_COLORS[parseInt(id, 10) % AVATAR_COLORS.length];
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
 const TIME_SLOTS = ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
@@ -59,9 +64,7 @@ function generateDates(count = 14): Date[] {
   });
 }
 
-function relativeDate(offsetDays: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
+function formatDate(d: Date): string {
   return `${DAY_SHORT[d.getDay()]}, ${d.getDate()} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`;
 }
 
@@ -81,61 +84,43 @@ interface Booking {
   price: number;
 }
 
-const UPCOMING: Booking[] = [
-  {
-    id: '1', trainerId: '1',
-    trainerName: 'Mantas Petrauskas', initials: 'MP',
-    sport: 'Football', emoji: '⚽',
-    date: relativeDate(3), time: '10:00',
-    location: 'Vingis Park, Vilnius',
-    status: 'confirmed', price: 35,
-  },
-  {
-    id: '2', trainerId: '2',
-    trainerName: 'Rūta Kazlauskaitė', initials: 'RK',
-    sport: 'Yoga', emoji: '🧘',
-    date: relativeDate(7), time: '09:00',
-    location: 'Studio Zen, Vilnius',
-    status: 'confirmed', price: 45,
-  },
-  {
-    id: '3', trainerId: '5',
-    trainerName: 'Darius Paulauskas', initials: 'DP',
-    sport: 'Boxing', emoji: '🥊',
-    date: relativeDate(14), time: '18:00',
-    location: 'Fight Club Gym, Klaipėda',
-    status: 'pending', price: 40,
-  },
-];
+interface BookingRow {
+  id: string;
+  trainer_id: string;
+  date: string;
+  time_slot: string;
+  status: string;
+  price: number;
+  trainers: {
+    full_name: string;
+    city: string | null;
+    sports: { name: string; emoji: string } | { name: string; emoji: string }[] | null;
+  } | null;
+}
 
-const PAST: Booking[] = [
-  {
-    id: '4', trainerId: '2',
-    trainerName: 'Rūta Kazlauskaitė', initials: 'RK',
-    sport: 'Yoga', emoji: '🧘',
-    date: relativeDate(-3), time: '09:00',
-    location: 'Studio Zen, Vilnius',
-    status: 'completed', price: 45,
-  },
-  {
-    id: '5', trainerId: '1',
-    trainerName: 'Mantas Petrauskas', initials: 'MP',
-    sport: 'Football', emoji: '⚽',
-    date: relativeDate(-7), time: '10:00',
-    location: 'Vingis Park, Vilnius',
-    status: 'completed', price: 35,
-  },
-  {
-    id: '6', trainerId: '4',
-    trainerName: 'Aistė Mikalauskaitė', initials: 'AM',
-    sport: 'Tennis', emoji: '🎾',
-    date: relativeDate(-14), time: '11:00',
-    location: 'Lazdynai Tennis Courts, Vilnius',
-    status: 'completed', price: 50,
-  },
-];
-
-const ALL_BOOKINGS = [...UPCOMING, ...PAST];
+function mapBooking(row: BookingRow): Booking {
+  const trainer  = row.trainers;
+  const rawSport = trainer?.sports ?? null;
+  const sport    = rawSport
+    ? (Array.isArray(rawSport) ? (rawSport[0] ?? { name: '', emoji: '' }) : rawSport)
+    : { name: '', emoji: '' };
+  const nameWords = (trainer?.full_name ?? '').split(' ').filter(Boolean);
+  const initials  = nameWords.map(w => w[0].toUpperCase()).slice(0, 2).join('');
+  const [year, month, day] = row.date.split('-').map(Number);
+  return {
+    id:          row.id,
+    trainerId:   row.trainer_id,
+    trainerName: trainer?.full_name ?? '',
+    initials,
+    sport:       sport.name,
+    emoji:       sport.emoji,
+    date:        formatDate(new Date(year, month - 1, day)),
+    time:        row.time_slot,
+    location:    trainer?.city ?? '',
+    status:      row.status as Status,
+    price:       row.price,
+  };
+}
 
 const STATUS_CONFIG: Record<Status, { label: string; color: string; bg: string; darkBg: string }> = {
   confirmed: { label: 'Confirmed', color: '#16A34A', bg: '#DCFCE7', darkBg: '#052E16' },
@@ -561,7 +546,7 @@ function CalendarBookingCard({ booking, isDarkMode }: { booking: Booking; isDark
 
 // ─── Month calendar ───────────────────────────────────────────────────────────
 
-function MonthCalendar({ isDarkMode }: { isDarkMode: boolean }) {
+function MonthCalendar({ isDarkMode, allBookings }: { isDarkMode: boolean; allBookings: Booking[] }) {
   const { width: screenWidth } = useWindowDimensions();
   const [viewDate, setViewDate] = useState(() => {
     const d = new Date();
@@ -584,7 +569,7 @@ function MonthCalendar({ isDarkMode }: { isDarkMode: boolean }) {
   });
 
   function bookingsOnDay(day: number): Booking[] {
-    return ALL_BOOKINGS.filter(b => {
+    return allBookings.filter(b => {
       const d = parseBookingDate(b.date);
       return d && d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
     });
@@ -698,15 +683,37 @@ function MonthCalendar({ isDarkMode }: { isDarkMode: boolean }) {
 export default function BookingsScreen() {
   const insets = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
+  const { currentUser } = useAuthContext();
   const { width: screenWidth } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState(0);
-  const [upcoming, setUpcoming] = useState<Booking[]>([...UPCOMING]);
-  const [past,     setPast]     = useState<Booking[]>([...PAST]);
-  const [reviewBooking,    setReviewBooking]    = useState<Booking | null>(null);
+  const [upcoming, setUpcoming]   = useState<Booking[]>([]);
+  const [past,     setPast]       = useState<Booking[]>([]);
+  const [loading,  setLoading]    = useState(true);
+  const [reviewBooking,     setReviewBooking]     = useState<Booking | null>(null);
   const [rescheduleBooking, setRescheduleBooking] = useState<Booking | null>(null);
-  const [cancelBooking,    setCancelBooking]    = useState<Booking | null>(null);
+  const [cancelBooking,     setCancelBooking]     = useState<Booking | null>(null);
 
-  function handleCancel(booking: Booking) {
+  useEffect(() => {
+    if (!currentUser) return;
+    async function fetchBookings() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('id, trainer_id, date, time_slot, status, price, trainers(full_name, city, sports(name, emoji))')
+        .eq('client_id', currentUser!.id)
+        .order('date', { ascending: true });
+      if (!error && data) {
+        const mapped = (data as unknown as BookingRow[]).map(mapBooking);
+        setUpcoming(mapped.filter(b => b.status === 'confirmed' || b.status === 'pending'));
+        setPast(mapped.filter(b => b.status === 'completed' || b.status === 'cancelled'));
+      }
+      setLoading(false);
+    }
+    fetchBookings();
+  }, [currentUser]);
+
+  async function handleCancel(booking: Booking) {
+    await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', booking.id);
     setUpcoming(prev => prev.filter(b => b.id !== booking.id));
     setPast(prev => [{ ...booking, status: 'cancelled' as const }, ...prev]);
     setCancelBooking(null);
@@ -780,7 +787,11 @@ export default function BookingsScreen() {
           <ScrollView
             contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}
             showsVerticalScrollIndicator={false}>
-            {upcoming.length === 0 && past.length === 0 ? (
+            {loading ? (
+              <View style={styles.empty}>
+                <ActivityIndicator size="large" color={BLUE} />
+              </View>
+            ) : upcoming.length === 0 && past.length === 0 ? (
               <View style={styles.empty}>
                 <Calendar size={40} color={isDarkMode ? '#374151' : '#E5E7EB'} strokeWidth={1.5} />
                 <Text style={[styles.emptyTitle, { color: textPrimary }]}>No bookings yet</Text>
@@ -832,7 +843,7 @@ export default function BookingsScreen() {
           <ScrollView
             contentContainerStyle={[styles.calScrollContent, { paddingBottom: insets.bottom + 24 }]}
             showsVerticalScrollIndicator={false}>
-            <MonthCalendar isDarkMode={isDarkMode} />
+            <MonthCalendar isDarkMode={isDarkMode} allBookings={[...upcoming, ...past]} />
           </ScrollView>
         </View>
       </ScrollView>

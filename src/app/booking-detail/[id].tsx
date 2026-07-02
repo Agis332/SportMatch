@@ -4,17 +4,16 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { TRAINERS } from '@/data/trainers';
 import { useTheme } from '@/context/ThemeContext';
 import { supabase } from '@/lib/supabase';
 
 const BLUE = '#208AEF';
 
-// ─── Types & data ─────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type Status = 'confirmed' | 'pending' | 'completed' | 'cancelled';
 
-interface Booking {
+interface BookingDetail {
   id: string;
   trainerId: string;
   trainerName: string;
@@ -26,55 +25,12 @@ interface Booking {
   location: string;
   status: Status;
   price: number;
-}
-
-const DAY_SHORT   = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-function formatDate(d: Date): string {
-  return `${DAY_SHORT[d.getDay()]}, ${d.getDate()} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`;
-}
-
-function generateDates(count = 14): Date[] {
-  return Array.from({ length: count }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() + i + 1);
-    return d;
-  });
-}
-
-const TIME_SLOTS = [
-  '08:00', '09:00', '10:00', '11:00', '12:00',
-  '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00',
-];
-
-const AVATAR_COLORS = [
-  '#B5C9E4', '#C8DDB5', '#E4CDB5', '#D4B5E4', '#B5E4D4',
-  '#E4B5C8', '#C8B5E4', '#E4E4B5',
-];
-function avatarColor(id: string) {
-  return AVATAR_COLORS[parseInt(id, 10) % AVATAR_COLORS.length];
-}
-
-const STATUS_CONFIG: Record<Status, { label: string; color: string; bg: string; darkBg: string }> = {
-  confirmed: { label: 'Confirmed', color: '#16A34A', bg: '#DCFCE7', darkBg: '#052E16' },
-  pending:   { label: 'Pending',   color: '#D97706', bg: '#FEF3C7', darkBg: '#2D1A00' },
-  completed: { label: 'Completed', color: '#6B7280', bg: '#F3F4F6', darkBg: '#1F2937' },
-  cancelled: { label: 'Cancelled', color: '#EF4444', bg: '#FEF2F2', darkBg: '#450A0A' },
-};
-
-interface ExtrasData {
-  sessionType: string;
-  duration: string;
-  address: string;
-  paymentMethod: string;
   verified: boolean;
   rating: number;
 }
 
 interface BookingRow {
   id: string;
-  client_id: string;
   trainer_id: string;
   date: string;
   time_slot: string;
@@ -90,10 +46,73 @@ interface BookingRow {
   } | null;
 }
 
+const DAY_SHORT   = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function formatDate(d: Date): string {
+  return `${DAY_SHORT[d.getDay()]}, ${d.getDate()} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function mapBooking(row: BookingRow): BookingDetail {
+  const trainer  = row.trainers;
+  const rawSport = trainer?.sports ?? null;
+  const sport    = rawSport
+    ? (Array.isArray(rawSport) ? (rawSport[0] ?? { name: '', emoji: '' }) : rawSport)
+    : { name: '', emoji: '' };
+  const nameWords = (trainer?.full_name ?? '').split(' ').filter(Boolean);
+  const initials  = nameWords.map(w => w[0].toUpperCase()).slice(0, 2).join('');
+  const [year, month, day] = row.date.split('-').map(Number);
+  return {
+    id:          row.id,
+    trainerId:   row.trainer_id,
+    trainerName: trainer?.full_name ?? '',
+    initials,
+    sport:       sport.name,
+    emoji:       sport.emoji,
+    date:        formatDate(new Date(year, month - 1, day)),
+    time:        row.time_slot,
+    location:    trainer?.city ?? '',
+    status:      row.status as Status,
+    price:       row.price,
+    verified:    trainer?.is_verified ?? false,
+    rating:      trainer?.rating ?? 0,
+  };
+}
+
+const AVATAR_COLORS = [
+  '#B5C9E4', '#C8DDB5', '#E4CDB5', '#D4B5E4', '#B5E4D4',
+  '#E4B5C8', '#C8B5E4', '#E4E4B5',
+];
+function avatarColor(id: string) {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+const STATUS_CONFIG: Record<Status, { label: string; color: string; bg: string; darkBg: string }> = {
+  confirmed: { label: 'Confirmed', color: '#16A34A', bg: '#DCFCE7', darkBg: '#052E16' },
+  pending:   { label: 'Pending',   color: '#D97706', bg: '#FEF3C7', darkBg: '#2D1A00' },
+  completed: { label: 'Completed', color: '#6B7280', bg: '#F3F4F6', darkBg: '#1F2937' },
+  cancelled: { label: 'Cancelled', color: '#EF4444', bg: '#FEF2F2', darkBg: '#450A0A' },
+};
+
+const TIME_SLOTS = [
+  '08:00', '09:00', '10:00', '11:00', '12:00',
+  '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00',
+];
+
+function generateDates(count = 14): Date[] {
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() + i + 1);
+    return d;
+  });
+}
+
 // ─── Cancel modal ─────────────────────────────────────────────────────────────
 
 function CancelModal({ booking, isDarkMode, onConfirm, onClose, confirming }: {
-  booking: Booking;
+  booking: BookingDetail;
   isDarkMode: boolean;
   onConfirm: () => void;
   onClose: () => void;
@@ -157,7 +176,11 @@ function CancelModal({ booking, isDarkMode, onConfirm, onClose, confirming }: {
           <Text style={[styles.cancelRefundReminder, { color: textSub }]}>
             Refund will be processed within 3–5 business days.
           </Text>
-          <TouchableOpacity style={[styles.cancelConfirmBtn, confirming && { opacity: 0.6 }]} onPress={onConfirm} activeOpacity={0.85} disabled={confirming}>
+          <TouchableOpacity
+            style={[styles.cancelConfirmBtn, confirming && { opacity: 0.6 }]}
+            onPress={onConfirm}
+            activeOpacity={0.85}
+            disabled={confirming}>
             {confirming
               ? <ActivityIndicator size="small" color="#FFFFFF" />
               : <Text style={styles.modalBtnText}>Yes, Cancel</Text>
@@ -175,7 +198,7 @@ function CancelModal({ booking, isDarkMode, onConfirm, onClose, confirming }: {
 // ─── Reschedule modal ─────────────────────────────────────────────────────────
 
 function RescheduleModal({ booking, isDarkMode, onConfirm, onClose }: {
-  booking: Booking;
+  booking: BookingDetail;
   isDarkMode: boolean;
   onConfirm: (date: string, time: string) => void;
   onClose: () => void;
@@ -208,10 +231,7 @@ function RescheduleModal({ booking, isDarkMode, onConfirm, onClose }: {
           <View style={[styles.modalDivider, { backgroundColor: divider }]} />
 
           <Text style={[styles.pickerLabel, { color: textColor }]}>Select Date</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.datesRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.datesRow}>
             {dates.map((d, i) => {
               const isSelected = d.toDateString() === selectedDate.toDateString();
               return (
@@ -220,15 +240,9 @@ function RescheduleModal({ booking, isDarkMode, onConfirm, onClose }: {
                   style={[styles.dateChip, { backgroundColor: isSelected ? BLUE : chipBg }]}
                   onPress={() => setSelectedDate(d)}
                   activeOpacity={0.75}>
-                  <Text style={[styles.dateChipDay, { color: isSelected ? 'rgba(255,255,255,0.8)' : textSub }]}>
-                    {DAY_SHORT[d.getDay()]}
-                  </Text>
-                  <Text style={[styles.dateChipNum, { color: isSelected ? '#FFFFFF' : textColor }]}>
-                    {d.getDate()}
-                  </Text>
-                  <Text style={[styles.dateChipMonth, { color: isSelected ? 'rgba(255,255,255,0.7)' : textSub }]}>
-                    {MONTH_SHORT[d.getMonth()]}
-                  </Text>
+                  <Text style={[styles.dateChipDay,   { color: isSelected ? 'rgba(255,255,255,0.8)' : textSub }]}>{DAY_SHORT[d.getDay()]}</Text>
+                  <Text style={[styles.dateChipNum,   { color: isSelected ? '#FFFFFF' : textColor }]}>{d.getDate()}</Text>
+                  <Text style={[styles.dateChipMonth, { color: isSelected ? 'rgba(255,255,255,0.7)' : textSub }]}>{MONTH_SHORT[d.getMonth()]}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -246,9 +260,7 @@ function RescheduleModal({ booking, isDarkMode, onConfirm, onClose }: {
                   style={[styles.timeChip, { backgroundColor: isSelected ? BLUE : chipBg }]}
                   onPress={() => setSelectedTime(slot)}
                   activeOpacity={0.75}>
-                  <Text style={[styles.timeChipText, { color: isSelected ? '#FFFFFF' : textColor }]}>
-                    {slot}
-                  </Text>
+                  <Text style={[styles.timeChipText, { color: isSelected ? '#FFFFFF' : textColor }]}>{slot}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -269,101 +281,37 @@ function RescheduleModal({ booking, isDarkMode, onConfirm, onClose }: {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function BookingDetailScreen() {
-  const params = useLocalSearchParams<{
-    id:            string;
-    trainerId?:    string;
-    trainerName?:  string;
-    sport?:        string;
-    emoji?:        string;
-    date?:         string;
-    time?:         string;
-    location?:     string;
-    price?:        string;
-    paymentMethod?: string;
-    duration?:     string;
-  }>();
-  const { id }   = params;
+  const { id }   = useLocalSearchParams<{ id: string }>();
   const insets   = useSafeAreaInsets();
   const { isDarkMode } = useTheme();
 
-  const [booking, setBooking] = useState<Booking | undefined>(() => {
-    if (id === 'new' && params.trainerId) {
-      const nameWords = (params.trainerName ?? '').split(' ').filter(Boolean);
-      const initials  = nameWords.map(w => w[0].toUpperCase()).slice(0, 2).join('');
-      return {
-        id:          'new',
-        trainerId:   params.trainerId,
-        trainerName: params.trainerName ?? '',
-        initials,
-        sport:       params.sport    ?? '',
-        emoji:       params.emoji    ?? '🏅',
-        date:        params.date     ?? '',
-        time:        params.time     ?? '',
-        location:    params.location ?? '',
-        status:      'pending',
-        price:       Number(params.price) || 0,
-      };
-    }
-    return undefined;
-  });
-  const [loading, setLoading]         = useState(id !== 'new');
-  const [error, setError]             = useState<string | null>(null);
-  const [fetchedExtras, setFetchedExtras] = useState<ExtrasData | null>(null);
-  const [cancelling, setCancelling]   = useState(false);
+  const [booking, setBooking]                     = useState<BookingDetail | null>(null);
+  const [loading, setLoading]                     = useState(true);
+  const [error, setError]                         = useState<string | null>(null);
+  const [showCancel, setShowCancel]               = useState(false);
+  const [showReschedule, setShowReschedule]       = useState(false);
+  const [rescheduleSuccess, setRescheduleSuccess] = useState(false);
+  const [cancelling, setCancelling]               = useState(false);
 
   useEffect(() => {
-    if (id === 'new') return;
+    if (!id) return;
     async function fetchBooking() {
       setLoading(true);
       setError(null);
       const { data, error: err } = await supabase
         .from('bookings')
-        .select('id, client_id, trainer_id, date, time_slot, status, price, notes, trainers(full_name, city, rating, is_verified, sports(name, emoji))')
+        .select('id, trainer_id, date, time_slot, status, price, notes, trainers(full_name, city, rating, is_verified, sports(name, emoji))')
         .eq('id', id)
         .single();
       if (err) {
         setError(err.message);
       } else if (data) {
-        const row = data as unknown as BookingRow;
-        const trainer = row.trainers;
-        const rawSport = trainer?.sports ?? null;
-        const sport = rawSport
-          ? (Array.isArray(rawSport) ? (rawSport[0] ?? { name: '', emoji: '' }) : rawSport)
-          : { name: '', emoji: '' };
-        const nameWords = (trainer?.full_name ?? '').split(' ').filter(Boolean);
-        const inits = nameWords.map(w => w[0].toUpperCase()).slice(0, 2).join('');
-        const [year, month, day] = row.date.split('-').map(Number);
-        const dateObj = new Date(year, month - 1, day);
-        setBooking({
-          id:          row.id,
-          trainerId:   row.trainer_id,
-          trainerName: trainer?.full_name ?? '',
-          initials:    inits,
-          sport:       sport.name,
-          emoji:       sport.emoji,
-          date:        formatDate(dateObj),
-          time:        row.time_slot,
-          location:    trainer?.city ?? '',
-          status:      row.status as Status,
-          price:       row.price,
-        });
-        setFetchedExtras({
-          sessionType:   'Individual',
-          duration:      '60 min',
-          address:       trainer?.city ?? '',
-          paymentMethod: 'Card',
-          verified:      trainer?.is_verified ?? false,
-          rating:        trainer?.rating ?? 0,
-        });
+        setBooking(mapBooking(data as unknown as BookingRow));
       }
       setLoading(false);
     }
     fetchBooking();
   }, [id]);
-
-  const [showCancel, setShowCancel]               = useState(false);
-  const [showReschedule, setShowReschedule]       = useState(false);
-  const [rescheduleSuccess, setRescheduleSuccess] = useState(false);
 
   useEffect(() => {
     if (rescheduleSuccess) {
@@ -371,22 +319,6 @@ export default function BookingDetailScreen() {
       return () => clearTimeout(t);
     }
   }, [rescheduleSuccess]);
-
-  const extras = (() => {
-    if (!booking) return null;
-    if (id === 'new' && params.trainerId) {
-      const t = TRAINERS.find(tr => tr.id === params.trainerId);
-      return {
-        sessionType:   'Individual',
-        duration:      params.duration     ?? '1h',
-        address:       params.location     ?? '',
-        paymentMethod: params.paymentMethod ?? 'Card',
-        verified:      t?.verified ?? false,
-        rating:        t?.rating   ?? 4.8,
-      };
-    }
-    return fetchedExtras;
-  })();
 
   const bg          = isDarkMode ? '#111827' : '#F3F4F6';
   const headerBg    = isDarkMode ? '#111827' : '#FFFFFF';
@@ -396,16 +328,20 @@ export default function BookingDetailScreen() {
   const textSub     = isDarkMode ? '#9CA3AF' : '#6B7280';
   const divColor    = isDarkMode ? '#374151' : '#F3F4F6';
 
-  if (loading || (!booking && !error)) {
+  const header = (
+    <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: headerBg, borderBottomColor: borderColor }]}>
+      <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <ChevronLeft size={24} color={textPrimary} strokeWidth={2} />
+      </TouchableOpacity>
+      <Text style={[styles.headerTitle, { color: textPrimary }]}>Booking Details</Text>
+      <View style={styles.backBtn} />
+    </View>
+  );
+
+  if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: bg }]}>
-        <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: headerBg, borderBottomColor: borderColor }]}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <ChevronLeft size={24} color={textPrimary} strokeWidth={2} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: textPrimary }]}>Booking Details</Text>
-          <View style={styles.backBtn} />
-        </View>
+        {header}
         <View style={styles.notFound}>
           <ActivityIndicator size="large" color={BLUE} />
         </View>
@@ -416,13 +352,7 @@ export default function BookingDetailScreen() {
   if (error || !booking) {
     return (
       <View style={[styles.container, { backgroundColor: bg }]}>
-        <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: headerBg, borderBottomColor: borderColor }]}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <ChevronLeft size={24} color={textPrimary} strokeWidth={2} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: textPrimary }]}>Booking Details</Text>
-          <View style={styles.backBtn} />
-        </View>
+        {header}
         <View style={styles.notFound}>
           <Text style={[styles.notFoundText, { color: textSub }]}>{error ?? 'Booking not found.'}</Text>
         </View>
@@ -437,11 +367,9 @@ export default function BookingDetailScreen() {
   const total      = booking.price + serviceFee;
 
   async function handleCancel() {
-    if (id !== 'new') {
-      setCancelling(true);
-      await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', id);
-      setCancelling(false);
-    }
+    setCancelling(true);
+    await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', id);
+    setCancelling(false);
     setBooking(prev => prev ? { ...prev, status: 'cancelled' } : prev);
     setShowCancel(false);
   }
@@ -462,7 +390,7 @@ export default function BookingDetailScreen() {
     );
   }
 
-  function PaymentRow({ label, value, total: isTotal }: { label: string; value: string; total?: boolean }) {
+  function PaymentRow({ label, value, isTotal }: { label: string; value: string; isTotal?: boolean }) {
     return (
       <View style={styles.payRow}>
         <Text style={[styles.payLabel, isTotal ? { color: textPrimary, fontWeight: '700' } : { color: textSub }]}>
@@ -477,23 +405,13 @@ export default function BookingDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: headerBg, borderBottomColor: borderColor }]}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => router.back()}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <ChevronLeft size={24} color={textPrimary} strokeWidth={2} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: textPrimary }]}>Booking Details</Text>
-        <View style={styles.backBtn} />
-      </View>
+      {header}
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 100 }]}>
 
-        {/* Trainer */}
+        {/* Trainer card */}
         <TouchableOpacity
           style={[styles.card, { backgroundColor: cardBg, borderColor }]}
           onPress={() => router.push(`/trainer/${booking.trainerId}`)}
@@ -504,21 +422,19 @@ export default function BookingDetailScreen() {
           <View style={styles.trainerInfo}>
             <View style={styles.trainerNameRow}>
               <Text style={[styles.trainerName, { color: textPrimary }]}>{booking.trainerName}</Text>
-              {extras?.verified && (
+              {booking.verified && (
                 <BadgeCheck size={16} color="#FFFFFF" fill="#22C55E" strokeWidth={2.5} />
               )}
             </View>
-            <Text style={[styles.trainerSport, { color: textSub }]}>
-              {booking.emoji} {booking.sport}
-            </Text>
-            {extras && (
-              <Text style={[styles.trainerRating, { color: BLUE }]}>★ {extras.rating}</Text>
+            <Text style={[styles.trainerSport, { color: textSub }]}>{booking.emoji} {booking.sport}</Text>
+            {booking.rating > 0 && (
+              <Text style={[styles.trainerRating, { color: BLUE }]}>★ {booking.rating}</Text>
             )}
           </View>
           <ChevronRight size={18} color={textSub} strokeWidth={2} />
         </TouchableOpacity>
 
-        {/* Status badge (non-pending) */}
+        {/* Status badge */}
         {booking.status !== 'pending' && (
           <View style={styles.statusRow}>
             <View style={[styles.statusBadge, { backgroundColor: isDarkMode ? status.darkBg : status.bg }]}>
@@ -527,7 +443,7 @@ export default function BookingDetailScreen() {
           </View>
         )}
 
-        {/* Pending info bar */}
+        {/* Pending bar */}
         {booking.status === 'pending' && (
           <View style={[styles.pendingBar, { backgroundColor: isDarkMode ? '#2D1A00' : '#FFF8E7' }]}>
             <View style={styles.pendingBarBadge}>
@@ -553,35 +469,15 @@ export default function BookingDetailScreen() {
         <View style={[styles.section, { backgroundColor: cardBg, borderColor }]}>
           <Text style={[styles.sectionTitle, { color: textPrimary }]}>Session Details</Text>
           <View style={[styles.sectionDivider, { backgroundColor: divColor }]} />
-          <DetailRow
-            icon={<Calendar size={15} color={textSub} strokeWidth={2} />}
-            label="Date"
-            value={booking.date}
-          />
+          <DetailRow icon={<Calendar size={15} color={textSub} strokeWidth={2} />} label="Date"         value={booking.date} />
           <View style={[styles.rowDivider, { backgroundColor: divColor }]} />
-          <DetailRow
-            icon={<Clock size={15} color={textSub} strokeWidth={2} />}
-            label="Time"
-            value={booking.time}
-          />
+          <DetailRow icon={<Clock size={15} color={textSub} strokeWidth={2} />}    label="Time"         value={booking.time} />
           <View style={[styles.rowDivider, { backgroundColor: divColor }]} />
-          <DetailRow
-            icon={<Timer size={15} color={textSub} strokeWidth={2} />}
-            label="Duration"
-            value={extras?.duration ?? '60 min'}
-          />
+          <DetailRow icon={<Timer size={15} color={textSub} strokeWidth={2} />}    label="Duration"     value="60 min" />
           <View style={[styles.rowDivider, { backgroundColor: divColor }]} />
-          <DetailRow
-            icon={<User size={15} color={textSub} strokeWidth={2} />}
-            label="Session type"
-            value={extras?.sessionType ?? 'Individual'}
-          />
+          <DetailRow icon={<User size={15} color={textSub} strokeWidth={2} />}     label="Session type" value="Individual" />
           <View style={[styles.rowDivider, { backgroundColor: divColor }]} />
-          <DetailRow
-            icon={<MapPin size={15} color={textSub} strokeWidth={2} />}
-            label="Location"
-            value={booking.location}
-          />
+          <DetailRow icon={<MapPin size={15} color={textSub} strokeWidth={2} />}   label="Location"     value={booking.location} />
         </View>
 
         {/* Payment */}
@@ -590,7 +486,7 @@ export default function BookingDetailScreen() {
           <View style={[styles.sectionDivider, { backgroundColor: divColor }]} />
           <PaymentRow label="Session price" value={`€${booking.price.toFixed(2)}`} />
           <View style={[styles.rowDivider, { backgroundColor: divColor }]} />
-          <PaymentRow label="Service fee" value={`€${serviceFee.toFixed(2)}`} />
+          <PaymentRow label="Service fee"   value={`€${serviceFee.toFixed(2)}`} />
           <View style={[styles.payTotalDivider, { backgroundColor: divColor }]} />
           <View style={styles.payRow}>
             <Text style={[styles.payLabel, { color: textPrimary, fontWeight: '700' }]}>Total paid</Text>
@@ -604,22 +500,20 @@ export default function BookingDetailScreen() {
             <Text style={[styles.payLabel, { color: textSub }]}>Payment method</Text>
             <View style={styles.payMethodRow}>
               <CreditCard size={14} color={textSub} strokeWidth={2} />
-              <Text style={[styles.payValue, { color: textPrimary }]}>{extras?.paymentMethod ?? 'Card'}</Text>
+              <Text style={[styles.payValue, { color: textPrimary }]}>Card</Text>
             </View>
           </View>
         </View>
 
         {/* Location */}
-        {extras && (
-          <View style={[styles.section, { backgroundColor: cardBg, borderColor }]}>
-            <Text style={[styles.sectionTitle, { color: textPrimary }]}>Location</Text>
-            <View style={[styles.sectionDivider, { backgroundColor: divColor }]} />
-            <View style={styles.locationRow}>
-              <MapPin size={16} color={BLUE} strokeWidth={2} />
-              <Text style={[styles.locationText, { color: textPrimary }]}>{extras.address}</Text>
-            </View>
+        <View style={[styles.section, { backgroundColor: cardBg, borderColor }]}>
+          <Text style={[styles.sectionTitle, { color: textPrimary }]}>Location</Text>
+          <View style={[styles.sectionDivider, { backgroundColor: divColor }]} />
+          <View style={styles.locationRow}>
+            <MapPin size={16} color={BLUE} strokeWidth={2} />
+            <Text style={[styles.locationText, { color: textPrimary }]}>{booking.location}</Text>
           </View>
-        )}
+        </View>
 
       </ScrollView>
 
@@ -733,21 +627,6 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 14,
     fontWeight: '700',
-  },
-  statusDotRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#F59E0B',
-  },
-  statusDotText: {
-    fontSize: 14,
-    color: '#6B7280',
   },
 
   // Pending bar
