@@ -1,9 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { markConversationRead } from '@/store/read-conversations';
+import { useAuthContext } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
+import { supabase } from '@/lib/supabase';
 import { ChevronLeft, Mail, Phone, Send, User } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
@@ -21,6 +24,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const BLUE = '#208AEF';
 const GRAY = '#6B7280';
 
+// ─── Types ───────────────────────────────────────────────────────────────────
+
 interface Message {
   id: string;
   text: string;
@@ -28,92 +33,45 @@ interface Message {
   time: string;
 }
 
-interface TrainerMeta {
+interface MessageRow {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  trainer_id: string;
+  content: string;
+  created_at: string;
+}
+
+interface TrainerInfo {
   name: string;
   sport: string;
   initials: string;
-  online: boolean;
 }
 
-interface ClientMeta {
-  name: string;
-  initials: string;
-  email: string;
-  phone: string;
-  memberSince: string;
-  online: boolean;
-}
-
-const CLIENT_META: Record<string, ClientMeta> = {
-  '1': { name: 'Jonas Kazlauskas',  initials: 'JK', email: 'jonas.k@gmail.com',      phone: '+370 612 34567', memberSince: 'Mar 2025', online: true  },
-  '2': { name: 'Marta Petraitytė',  initials: 'MP', email: 'marta.p@gmail.com',      phone: '+370 698 76543', memberSince: 'Jan 2026', online: true  },
-  '3': { name: 'Tomas Butkus',      initials: 'TB', email: 'tomas.b@gmail.com',      phone: '+370 655 11223', memberSince: 'Apr 2025', online: false },
-  '4': { name: 'Rasa Mockutė',      initials: 'RM', email: 'rasa.m@gmail.com',       phone: '+370 679 44556', memberSince: 'Feb 2026', online: false },
-  '5': { name: 'Viktorija Paulė',   initials: 'VP', email: 'viktorija.p@gmail.com',  phone: '+370 620 98765', memberSince: 'Nov 2024', online: false },
-  '6': { name: 'Eglė Jankutė',     initials: 'EJ', email: 'egle.j@gmail.com',       phone: '+370 647 33210', memberSince: 'May 2025', online: true  },
-  '7': { name: 'Laurynas Grigas',   initials: 'LG', email: 'laurynas.g@gmail.com',   phone: '+370 601 87654', memberSince: 'Jun 2024', online: false },
-  '8': { name: 'Kristina Vaitkutė', initials: 'KV', email: 'kristina.v@gmail.com',   phone: '+370 635 22109', memberSince: 'Aug 2025', online: false },
-};
-
-const TRAINER_META: Record<string, TrainerMeta> = {
-  '1': { name: 'Rūta Kazlauskaitė', sport: 'Yoga', initials: 'RK', online: true },
-  '2': { name: 'Mantas Petrauskas', sport: 'Football', initials: 'MP', online: false },
-  '3': { name: 'Darius Paulauskas', sport: 'Boxing', initials: 'DP', online: true },
-  '4': { name: 'Ingrida Vaitkutė', sport: 'Swimming', initials: 'IV', online: false },
-  '5': { name: 'Aistė Mikalauskaitė', sport: 'Tennis', initials: 'AM', online: false },
-  '6': { name: 'Erikas Butkus', sport: 'Running', initials: 'EB', online: false },
-  '7': { name: 'Laura Stankevičiūtė', sport: 'CrossFit', initials: 'LS', online: true },
-  '8': { name: 'Tomas Žukauskas', sport: 'Basketball', initials: 'TŽ', online: false },
-};
-
-const INITIAL_MESSAGES: Record<string, Message[]> = {
-  '1': [
-    { id: '1', text: 'Hi! Looking forward to our session on Thursday 🧘', isOwn: false, time: '09:20' },
-    { id: '2', text: 'Me too! Should I bring anything specific?', isOwn: true, time: '09:31' },
-    { id: '3', text: 'Just your yoga mat and comfortable clothes. Water bottle too — we\'ll be doing a 60-min flow.', isOwn: false, time: '09:33' },
-    { id: '4', text: 'Perfect, I have all that. What time exactly?', isOwn: true, time: '09:35' },
-    { id: '5', text: 'See you Thursday at 9am! Don\'t forget your mat 🧘', isOwn: false, time: '09:41' },
-  ],
-  '2': [
-    { id: '1', text: 'Great work today on the drills! Your left foot is really improving.', isOwn: false, time: '17:10' },
-    { id: '2', text: 'Thanks! I\'ve been practicing on my own too.', isOwn: true, time: '17:22' },
-    { id: '3', text: 'It shows. Keep it up between sessions.', isOwn: false, time: '17:25' },
-    { id: '4', text: 'Will do. Same time next week?', isOwn: true, time: '17:27' },
-    { id: '5', text: 'Great session today. We\'ll work on passing drills next time.', isOwn: false, time: '17:30' },
-  ],
-  '3': [
-    { id: '1', text: 'Hey, I wanted to check — are you okay with Tuesday\'s session as planned?', isOwn: false, time: '14:00' },
-    { id: '2', text: 'Actually I have a conflict at 5pm. Can we shift?', isOwn: true, time: '14:14' },
-    { id: '3', text: 'Of course! What works for you?', isOwn: false, time: '14:15' },
-    { id: '4', text: '6pm would be perfect if you\'re free.', isOwn: true, time: '14:18' },
-    { id: '5', text: 'Can you move Tuesday\'s session to 6pm instead?', isOwn: false, time: '14:20' },
-  ],
-};
-
-function fallbackMessages(trainerId: string): Message[] {
-  return [
-    { id: '1', text: 'Welcome! I\'m looking forward to working with you.', isOwn: false, time: '10:00' },
-    { id: '2', text: 'Thank you! When can we schedule our first session?', isOwn: true, time: '10:05' },
-    { id: '3', text: 'I have availability Monday and Wednesday evenings, or Saturday morning.', isOwn: false, time: '10:07' },
-    { id: '4', text: 'Saturday morning works great for me!', isOwn: true, time: '10:09' },
-    { id: '5', text: 'Perfect — let\'s lock in Saturday at 10am. See you then! 👍', isOwn: false, time: '10:11' },
-  ];
-}
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const AVATAR_COLORS = [
   '#B5C9E4', '#C8DDB5', '#E4CDB5', '#D4B5E4', '#B5E4D4',
   '#E4B5C8', '#C8B5E4', '#E4E4B5',
 ];
 
-function avatarColor(id: string) {
-  return AVATAR_COLORS[parseInt(id, 10) % AVATAR_COLORS.length];
+function avatarColor(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
-function now(): string {
-  const d = new Date();
-  const h = d.getHours().toString().padStart(2, '0');
-  const m = d.getMinutes().toString().padStart(2, '0');
-  return `${h}:${m}`;
+function getInitials(name: string): string {
+  return name.split(' ').slice(0, 2).map(w => w[0] ?? '').join('').toUpperCase() || '?';
+}
+
+function mapMessage(row: MessageRow, userId: string): Message {
+  return {
+    id:    row.id,
+    text:  row.content,
+    isOwn: row.sender_id === userId,
+    time:  new Date(row.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+  };
 }
 
 export default function ChatScreen() {
@@ -140,13 +98,19 @@ export default function ChatScreen() {
   const textSub  = isDarkMode ? '#9CA3AF' : '#6B7280';
   const divColor = isDarkMode ? '#374151' : '#F3F4F6';
 
-  const trainer    = TRAINER_META[id] ?? { name: 'Trainer',  sport: '', initials: '?', online: false };
-  const clientInfo = CLIENT_META[id]  ?? { name: 'Client', initials: '?', email: '', phone: '', memberSince: '', online: false };
-  const person     = isTrainerMode ? clientInfo : trainer;
+  const { currentUser } = useAuthContext();
+  const userId = currentUser?.id ?? '';
 
-  const [messages,        setMessages]        = useState<Message[]>(INITIAL_MESSAGES[id] ?? fallbackMessages(id));
-  const [inputText,       setInputText]       = useState('');
-  const [showClientInfo,  setShowClientInfo]  = useState(false);
+  const [trainerInfo,    setTrainerInfo]    = useState<TrainerInfo | null>(null);
+  const [messages,       setMessages]       = useState<Message[]>([]);
+  const [loading,        setLoading]        = useState(true);
+  const [inputText,      setInputText]      = useState('');
+  const [showClientInfo, setShowClientInfo] = useState(false);
+
+  const trainer = trainerInfo ?? { name: 'Trainer', sport: '', initials: '?' };
+  const person  = isTrainerMode
+    ? { name: 'Client', initials: '?', online: false }
+    : { ...trainer, online: false };
 
   useEffect(() => {
     markConversationRead(id);
@@ -160,18 +124,63 @@ export default function ChatScreen() {
     return () => sub.remove();
   }, []);
 
-  function handleSend() {
+  useEffect(() => {
+    if (!userId) return;
+
+    supabase
+      .from('trainers')
+      .select('full_name, sports(name)')
+      .eq('id', id)
+      .single()
+      .then(({ data }) => {
+        if (!data) return;
+        const raw  = (data as unknown as { full_name: string; sports: { name: string } | { name: string }[] | null }).sports;
+        const sport = Array.isArray(raw) ? (raw[0]?.name ?? '') : (raw?.name ?? '');
+        const name  = (data as unknown as { full_name: string }).full_name;
+        setTrainerInfo({ name, sport, initials: getInitials(name) });
+      });
+
+    supabase
+      .from('messages')
+      .select('*')
+      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+      .eq('trainer_id', id)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => {
+        setMessages((data ?? []).map(row => mapMessage(row as MessageRow, userId)));
+        setLoading(false);
+        setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 50);
+      });
+
+    const channel = supabase
+      .channel(`chat:${id}:${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: `trainer_id=eq.${id}` },
+        (payload) => {
+          const row = payload.new as MessageRow;
+          setMessages(prev => {
+            if (prev.some(m => m.id === row.id)) return prev;
+            return [...prev, mapMessage(row, userId)];
+          });
+          setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
+        },
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [id, userId]);
+
+  async function handleSend() {
     const text = inputText.trim();
-    if (!text) return;
-    const newMsg: Message = {
-      id: String(Date.now()),
-      text,
-      isOwn: true,
-      time: now(),
-    };
-    setMessages(prev => [...prev, newMsg]);
+    if (!text || !userId) return;
     setInputText('');
-    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
+    await supabase.from('messages').insert({
+      sender_id:   userId,
+      receiver_id: id,
+      trainer_id:  id,
+      content:     text,
+    });
   }
 
   return (
@@ -201,7 +210,7 @@ export default function ChatScreen() {
             <View style={styles.headerSubRow}>
               {person.online && <View style={styles.onlineDot} />}
               <Text style={[styles.headerSub, { color: headerSubColor }]}>
-                {person.online ? 'Active now' : (isTrainerMode ? 'Client' : (trainer as TrainerMeta).sport)}
+                {person.online ? 'Active now' : (isTrainerMode ? 'Client' : trainer.sport)}
               </Text>
             </View>
           </View>
@@ -209,6 +218,9 @@ export default function ChatScreen() {
       </View>
 
       {/* Messages */}
+      {loading && (
+        <ActivityIndicator style={{ marginTop: 32 }} color={BLUE} />
+      )}
       <FlatList
         ref={listRef}
         data={messages}
@@ -293,12 +305,9 @@ export default function ChatScreen() {
             {/* Avatar + name */}
             <View style={styles.infoHeader}>
               <View style={[styles.infoAvatar, { backgroundColor: avatarColor(id) }]}>
-                <Text style={styles.infoInitials}>{clientInfo.initials}</Text>
+                <Text style={styles.infoInitials}>{person.initials}</Text>
               </View>
-              <Text style={[styles.infoName, { color: headerTextColor }]}>{clientInfo.name}</Text>
-              <View style={[styles.memberBadge, { backgroundColor: isDarkMode ? '#1E3A5F' : '#EFF6FF' }]}>
-                <Text style={[styles.memberBadgeText, { color: BLUE }]}>Member since {clientInfo.memberSince}</Text>
-              </View>
+              <Text style={[styles.infoName, { color: headerTextColor }]}>{person.name}</Text>
             </View>
 
             {/* Contact rows */}
@@ -309,7 +318,7 @@ export default function ChatScreen() {
                 </View>
                 <View style={styles.infoText}>
                   <Text style={[styles.infoLabel, { color: textSub }]}>Email</Text>
-                  <Text style={[styles.infoValue, { color: headerTextColor }]}>{clientInfo.email}</Text>
+                  <Text style={[styles.infoValue, { color: headerTextColor }]}>—</Text>
                 </View>
               </View>
               <View style={[styles.infoDivider, { backgroundColor: divColor }]} />
@@ -319,7 +328,7 @@ export default function ChatScreen() {
                 </View>
                 <View style={styles.infoText}>
                   <Text style={[styles.infoLabel, { color: textSub }]}>Phone</Text>
-                  <Text style={[styles.infoValue, { color: headerTextColor }]}>{clientInfo.phone}</Text>
+                  <Text style={[styles.infoValue, { color: headerTextColor }]}>—</Text>
                 </View>
               </View>
               <View style={[styles.infoDivider, { backgroundColor: divColor }]} />
@@ -329,7 +338,7 @@ export default function ChatScreen() {
                 </View>
                 <View style={styles.infoText}>
                   <Text style={[styles.infoLabel, { color: textSub }]}>Member since</Text>
-                  <Text style={[styles.infoValue, { color: headerTextColor }]}>{clientInfo.memberSince}</Text>
+                  <Text style={[styles.infoValue, { color: headerTextColor }]}>—</Text>
                 </View>
               </View>
             </View>
