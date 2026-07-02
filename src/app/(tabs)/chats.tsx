@@ -2,11 +2,14 @@ import { router, useFocusEffect } from 'expo-router';
 import {
   BadgeCheck, Search, Settings, X,
 } from 'lucide-react-native';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { isConversationRead } from '@/store/read-conversations';
+import { useAuthContext } from '@/context/AuthContext';
 import { useNotifications, Notification } from '@/context/NotificationsContext';
 import { useTheme } from '@/context/ThemeContext';
+import { supabase } from '@/lib/supabase';
 import {
+  ActivityIndicator,
   FlatList,
   Modal,
   NativeScrollEvent,
@@ -33,13 +36,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const BLUE = '#208AEF';
 const GRAY = '#6B7280';
 
-// ── Conversation types & data ─────────────────────────────────────────────────
+// ── Types & helpers ───────────────────────────────────────────────────────────
 
 interface Conversation {
   id: string;
   name: string;
   initials: string;
   sport: string;
+  emoji: string;
   lastMessage: string;
   timestamp: string;
   sortTime: number;
@@ -48,124 +52,68 @@ interface Conversation {
   verified: boolean;
 }
 
-const CONVERSATIONS: Conversation[] = [
-  {
-    id: '1',
-    name: 'Rūta Kazlauskaitė',
-    initials: 'RK',
-    sport: 'Yoga',
-    lastMessage: 'See you Thursday at 9am! Don\'t forget your mat 🧘',
-    timestamp: '09:41',
-    sortTime: Date.parse('2026-06-23T09:41:00'),
-    unread: 2,
-    online: true,
-    verified: true,
-  },
-  {
-    id: '2',
-    name: 'Mantas Petrauskas',
-    initials: 'MP',
-    sport: 'Football',
-    lastMessage: 'Great session today. We\'ll work on passing drills next time.',
-    timestamp: 'Yesterday',
-    sortTime: Date.parse('2026-06-22T18:30:00'),
-    unread: 0,
-    online: false,
-    verified: true,
-  },
-  {
-    id: '3',
-    name: 'Darius Paulauskas',
-    initials: 'DP',
-    sport: 'Boxing',
-    lastMessage: 'Can you move Tuesday\'s session to 6pm instead?',
-    timestamp: 'Yesterday',
-    sortTime: Date.parse('2026-06-22T14:15:00'),
-    unread: 1,
-    online: true,
-    verified: true,
-  },
-  {
-    id: '4',
-    name: 'Ingrida Vaitkutė',
-    initials: 'IV',
-    sport: 'Swimming',
-    lastMessage: 'Your technique has improved a lot — keep it up!',
-    timestamp: 'Sun',
-    sortTime: Date.parse('2026-06-21T20:45:00'),
-    unread: 0,
-    online: false,
-    verified: true,
-  },
-  {
-    id: '5',
-    name: 'Aistė Mikalauskaitė',
-    initials: 'AM',
-    sport: 'Tennis',
-    lastMessage: 'Booking confirmed for Saturday 10am at Lazdynai courts.',
-    timestamp: 'Sat',
-    sortTime: Date.parse('2026-06-20T10:00:00'),
-    unread: 0,
-    online: false,
-    verified: false,
-  },
-  {
-    id: '6',
-    name: 'Erikas Butkus',
-    initials: 'EB',
-    sport: 'Running',
-    lastMessage: 'New training plan uploaded to your profile. Check it out!',
-    timestamp: 'Sun',
-    sortTime: Date.parse('2026-06-21T11:20:00'),
-    unread: 3,
-    online: false,
-    verified: false,
-  },
-  {
-    id: '7',
-    name: 'Laura Stankevičiūtė',
-    initials: 'LS',
-    sport: 'CrossFit',
-    lastMessage: 'Remember — rest day tomorrow. Don\'t skip it 💪',
-    timestamp: 'Fri',
-    sortTime: Date.parse('2026-06-19T16:50:00'),
-    unread: 0,
-    online: true,
-    verified: false,
-  },
-  {
-    id: '8',
-    name: 'Tomas Žukauskas',
-    initials: 'TŽ',
-    sport: 'Basketball',
-    lastMessage: 'Are you joining the group session on Friday?',
-    timestamp: 'Thu',
-    sortTime: Date.parse('2026-06-18T10:05:00'),
-    unread: 0,
-    online: false,
-    verified: false,
-  },
-];
+interface MessageRow {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  trainer_id: string;
+  content: string;
+  created_at: string;
+  trainers: {
+    id: string;
+    full_name: string;
+    is_verified: boolean | null;
+    sports: { name: string; emoji: string } | { name: string; emoji: string }[] | null;
+  } | null;
+}
 
 const AVATAR_COLORS = [
   '#B5C9E4', '#C8DDB5', '#E4CDB5', '#D4B5E4', '#B5E4D4',
   '#E4B5C8', '#C8B5E4', '#E4E4B5',
 ];
 
-function avatarColor(id: string) {
-  return AVATAR_COLORS[parseInt(id, 10) % AVATAR_COLORS.length];
+function avatarColor(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
-const SPORT_EMOJI: Record<string, string> = {
-  Yoga: '🧘',
-  Football: '⚽',
-  Boxing: '🥊',
-  Swimming: '🏊',
-  Tennis: '🎾',
-  Running: '🏃',
-  CrossFit: '💪',
-  Basketball: '🏀',
-};
+function getInitials(name: string): string {
+  return name.split(' ').slice(0, 2).map(w => w[0] ?? '').join('').toUpperCase() || '?';
+}
+
+const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function formatMsgTime(isoStr: string): string {
+  const date = new Date(isoStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7)   return DAY_SHORT[date.getDay()];
+  return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+function mapConversation(row: MessageRow): Conversation {
+  const trainer  = row.trainers;
+  const rawSport = trainer?.sports ?? null;
+  const sport    = Array.isArray(rawSport) ? (rawSport[0] ?? { name: '', emoji: '' }) : (rawSport ?? { name: '', emoji: '' });
+  const name     = trainer?.full_name ?? 'Trainer';
+  return {
+    id:          row.trainer_id,
+    name,
+    initials:    getInitials(name),
+    sport:       sport.name,
+    emoji:       sport.emoji,
+    lastMessage: row.content,
+    timestamp:   formatMsgTime(row.created_at),
+    sortTime:    new Date(row.created_at).getTime(),
+    unread:      0,
+    online:      false,
+    verified:    trainer?.is_verified ?? false,
+  };
+}
 
 // ── Notification prefs (local to this screen's settings modal) ────────────────
 
@@ -213,14 +161,14 @@ function ChatRow({ item, unread, onPress }: { item: Conversation; unread: number
             <Text style={styles.initials}>{item.initials}</Text>
           </View>
           {item.online && <View style={[styles.onlineDot, { borderColor: ringColor }]} />}
-          {SPORT_EMOJI[item.sport] && (
+          {item.emoji ? (
             <View style={[styles.sportBadge, {
               backgroundColor: isDarkMode ? '#1F2937' : '#FFFFFF',
               borderColor: isDarkMode ? '#4B5563' : '#E0E0E0',
             }]}>
-              <Text style={styles.sportEmoji}>{SPORT_EMOJI[item.sport]}</Text>
+              <Text style={styles.sportEmoji}>{item.emoji}</Text>
             </View>
-          )}
+          ) : null}
         </View>
 
         <View style={styles.rowBody}>
@@ -321,7 +269,11 @@ export default function ChatsScreen() {
 
   const { notifications, markAsRead, unreadCount: notifUnreadCount } = useNotifications();
 
-  const [query, setQuery] = useState('');
+  const { currentUser } = useAuthContext();
+
+  const [conversationList, setConversationList] = useState<Conversation[]>([]);
+  const [loading,          setLoading]          = useState(true);
+  const [query,            setQuery]            = useState('');
   const [, setReadTick] = useState(0);
   const [activeTab, setActiveTab] = useState(0);
   const [showPrefs, setShowPrefs] = useState(false);
@@ -336,6 +288,28 @@ export default function ChatsScreen() {
       setReadTick(n => n + 1);
     }, []),
   );
+
+  useEffect(() => {
+    const userId = currentUser?.id;
+    if (!userId) return;
+    setLoading(true);
+    supabase
+      .from('messages')
+      .select('*, trainers(id, full_name, is_verified, sports(name, emoji))')
+      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (error) { console.error('[chats] fetch error:', error.message); setLoading(false); return; }
+        const seen = new Set<string>();
+        const deduped = (data as unknown as MessageRow[]).filter(m => {
+          if (seen.has(m.trainer_id)) return false;
+          seen.add(m.trainer_id);
+          return true;
+        });
+        setConversationList(deduped.map(mapConversation));
+        setLoading(false);
+      });
+  }, [currentUser]);
 
   const underlineStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: underlineX.value }],
@@ -357,16 +331,16 @@ export default function ChatsScreen() {
 
   const conversations = useMemo(() => {
     const filtered = query.trim()
-      ? CONVERSATIONS.filter(
+      ? conversationList.filter(
           c =>
             c.name.toLowerCase().includes(query.toLowerCase()) ||
             c.sport.toLowerCase().includes(query.toLowerCase()),
         )
-      : CONVERSATIONS;
+      : conversationList;
     return [...filtered].sort((a, b) => b.sortTime - a.sortTime);
-  }, [query]);
+  }, [query, conversationList]);
 
-  const totalUnread = CONVERSATIONS.reduce(
+  const totalUnread = conversationList.reduce(
     (sum, c) => sum + (isConversationRead(c.id) ? 0 : c.unread),
     0,
   );
@@ -504,25 +478,28 @@ export default function ChatsScreen() {
               clearButtonMode="while-editing"
             />
           </View>
-          <FlatList
-            data={conversations}
-            keyExtractor={item => item.id}
-            contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 16 }]}
-            showsVerticalScrollIndicator={false}
-            keyboardDismissMode="on-drag"
-            ListEmptyComponent={
-              <View style={styles.empty}>
-                <Text style={styles.emptyText}>No conversations found</Text>
-              </View>
-            }
-            renderItem={({ item }) => (
-              <ChatRow
-                item={item}
-                unread={isConversationRead(item.id) ? 0 : item.unread}
-                onPress={() => router.push(`/chat/${item.id}`)}
+          {loading
+            ? <ActivityIndicator style={{ marginTop: 40 }} color={BLUE} />
+            : <FlatList
+                data={conversations}
+                keyExtractor={item => item.id}
+                contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 16 }]}
+                showsVerticalScrollIndicator={false}
+                keyboardDismissMode="on-drag"
+                ListEmptyComponent={
+                  <View style={styles.empty}>
+                    <Text style={styles.emptyText}>No conversations yet</Text>
+                  </View>
+                }
+                renderItem={({ item }) => (
+                  <ChatRow
+                    item={item}
+                    unread={isConversationRead(item.id) ? 0 : item.unread}
+                    onPress={() => router.push(`/chat/${item.id}`)}
+                  />
+                )}
               />
-            )}
-          />
+          }
         </View>
 
         {/* Notifications page */}
