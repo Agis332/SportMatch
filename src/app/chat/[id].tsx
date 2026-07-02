@@ -204,7 +204,7 @@ export default function ChatScreen() {
     if (error) { console.error('[chat] send error:', error.message); return; }
 
     const newMsg: MessageRow = {
-      id:          crypto.randomUUID(),
+      id:          `temp-${Date.now()}-${Math.random()}`,
       sender_id:   userId,
       receiver_id: trainerUUID,
       trainer_id:  trainerUUID,
