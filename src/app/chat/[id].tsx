@@ -170,6 +170,8 @@ export default function ChatScreen() {
           { event: 'INSERT', schema: 'public', table: 'messages', filter: `trainer_id=eq.${trainerUUID}` },
           (payload) => {
             const row = payload.new as MessageRow;
+            // Own messages are already appended optimistically in handleSend
+            if (row.sender_id === userId) return;
             setMessages(prev => {
               if (prev.some(m => m.id === row.id)) return prev;
               return [...prev, mapMessage(row, userId)];
@@ -190,29 +192,25 @@ export default function ChatScreen() {
     if (!text || !userId) return;
     const trainerUUID = trainerUUIDRef.current;
     setInputText('');
-    console.log('[chat] inserting message:', { sender_id: userId, receiver_id: trainerUUID, trainer_id: trainerUUID, content: text });
-    const { data, error } = await supabase
-      .from('messages')
-      .insert({
-        sender_id:   userId,
-        receiver_id: trainerUUID,
-        trainer_id:  trainerUUID,
-        content:     text,
-      })
-      .select('id, created_at')
-      .single();
 
-    if (error) { console.error('[chat] send error:', error.message); return; }
-
-    // Append immediately; realtime deduplicates by id if the event arrives later
-    const sent: Message = {
-      id:    data.id,
+    // Append immediately with a temp id — don't wait for the insert round trip
+    setMessages(prev => [...prev, {
+      id:    Date.now().toString(),
       text,
       isOwn: true,
-      time:  new Date(data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
-    };
-    setMessages(prev => prev.some(m => m.id === sent.id) ? prev : [...prev, sent]);
+      time:  new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+    }]);
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
+
+    console.log('[chat] inserting message:', { sender_id: userId, receiver_id: trainerUUID, trainer_id: trainerUUID, content: text });
+    const { error } = await supabase.from('messages').insert({
+      sender_id:   userId,
+      receiver_id: trainerUUID,
+      trainer_id:  trainerUUID,
+      content:     text,
+    });
+
+    if (error) console.error('[chat] send error:', error.message);
   }
 
   return (
