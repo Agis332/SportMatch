@@ -286,30 +286,29 @@ export default function ChatsScreen() {
   useFocusEffect(
     useCallback(() => {
       setReadTick(n => n + 1);
-    }, []),
-  );
-
-  useEffect(() => {
-    const userId = currentUser?.id;
-    if (!userId) return;
-    setLoading(true);
-    supabase
-      .from('messages')
-      .select('*, trainers!messages_trainer_id_fkey(id, full_name, is_verified, sports(name, emoji))')
-      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) { console.error('[chats] fetch error:', error.message); setLoading(false); return; }
-        const seen = new Set<string>();
-        const deduped = (data as unknown as MessageRow[]).filter(m => {
-          if (seen.has(m.trainer_id)) return false;
-          seen.add(m.trainer_id);
-          return true;
+      const userId = currentUser?.id;
+      if (!userId) return;
+      setLoading(true);
+      supabase
+        .from('messages')
+        .select('*, trainers!messages_trainer_id_fkey(id, full_name, is_verified, sports(name, emoji))')
+        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+        .order('created_at', { ascending: false })
+        .then(({ data, error }) => {
+          if (error) { console.error('[chats] fetch error:', error.message); setLoading(false); return; }
+          const seen = new Set<string>();
+          const deduped = (data as unknown as MessageRow[])
+            .filter(m => {
+              if (seen.has(m.trainer_id)) return false;
+              seen.add(m.trainer_id);
+              return true;
+            });
+          // Already ordered by created_at DESC from Supabase; sortTime preserves that order
+          setConversationList(deduped.map(mapConversation));
+          setLoading(false);
         });
-        setConversationList(deduped.map(mapConversation));
-        setLoading(false);
-      });
-  }, [currentUser]);
+    }, [currentUser]),
+  );
 
   const underlineStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: underlineX.value }],

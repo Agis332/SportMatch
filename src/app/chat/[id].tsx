@@ -193,15 +193,6 @@ export default function ChatScreen() {
     const trainerUUID = trainerUUIDRef.current;
     setInputText('');
 
-    // Append immediately with a temp id — don't wait for the insert round trip
-    setMessages(prev => [...prev, {
-      id:    Date.now().toString(),
-      text,
-      isOwn: true,
-      time:  new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
-    }]);
-    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
-
     console.log('[chat] inserting message:', { sender_id: userId, receiver_id: trainerUUID, trainer_id: trainerUUID, content: text });
     const { error } = await supabase.from('messages').insert({
       sender_id:   userId,
@@ -210,7 +201,18 @@ export default function ChatScreen() {
       content:     text,
     });
 
-    if (error) console.error('[chat] send error:', error.message);
+    if (error) { console.error('[chat] send error:', error.message); return; }
+
+    const newMsg: MessageRow = {
+      id:          crypto.randomUUID(),
+      sender_id:   userId,
+      receiver_id: trainerUUID,
+      trainer_id:  trainerUUID,
+      content:     text,
+      created_at:  new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, mapMessage(newMsg, userId)]);
+    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
   }
 
   return (
