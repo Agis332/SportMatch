@@ -107,6 +107,9 @@ export default function ChatScreen() {
   const [inputText,      setInputText]      = useState('');
   const [showClientInfo, setShowClientInfo] = useState(false);
 
+  // Holds the confirmed trainer UUID from Supabase (may differ from route param for legacy nav)
+  const trainerUUIDRef = useRef(id);
+
   const trainer = trainerInfo ?? { name: 'Trainer', sport: '', initials: '?' };
   const person  = isTrainerMode
     ? { name: 'Client', initials: '?', online: false }
@@ -127,60 +130,89 @@ export default function ChatScreen() {
   useEffect(() => {
     if (!userId) return;
 
-    supabase
-      .from('trainers')
-      .select('full_name, sports(name)')
-      .eq('id', id)
-      .single()
-      .then(({ data }) => {
-        if (!data) return;
-        const raw  = (data as unknown as { full_name: string; sports: { name: string } | { name: string }[] | null }).sports;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    async function setup() {
+      // Fetch trainer first — use the confirmed UUID from Supabase, not just the route param
+      const { data: trainerData } = await supabase
+        .from('trainers')
+        .select('id, full_name, sports(name)')
+        .eq('id', id)
+        .single();
+
+      const trainerUUID = (trainerData as unknown as { id: string } | null)?.id ?? id;
+      trainerUUIDRef.current = trainerUUID;
+
+      if (trainerData) {
+        const raw   = (trainerData as unknown as { full_name: string; sports: { name: string } | { name: string }[] | null }).sports;
         const sport = Array.isArray(raw) ? (raw[0]?.name ?? '') : (raw?.name ?? '');
-        const name  = (data as unknown as { full_name: string }).full_name;
+        const name  = (trainerData as unknown as { full_name: string }).full_name;
         setTrainerInfo({ name, sport, initials: getInitials(name) });
-      });
+      }
 
-    supabase
-      .from('messages')
-      .select('*')
-      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-      .eq('trainer_id', id)
-      .order('created_at', { ascending: true })
-      .then(({ data }) => {
-        setMessages((data ?? []).map(row => mapMessage(row as MessageRow, userId)));
-        setLoading(false);
-        setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 50);
-      });
+      // Fetch messages scoped to the confirmed trainer UUID
+      const { data: msgData } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+        .eq('trainer_id', trainerUUID)
+        .order('created_at', { ascending: true });
 
-    const channel = supabase
-      .channel(`chat:${id}:${userId}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages', filter: `trainer_id=eq.${id}` },
-        (payload) => {
-          const row = payload.new as MessageRow;
-          setMessages(prev => {
-            if (prev.some(m => m.id === row.id)) return prev;
-            return [...prev, mapMessage(row, userId)];
-          });
-          setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
-        },
-      )
-      .subscribe();
+      setMessages((msgData ?? []).map(row => mapMessage(row as MessageRow, userId)));
+      setLoading(false);
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 50);
 
-    return () => { supabase.removeChannel(channel); };
+      // Realtime subscription using confirmed trainer UUID
+      channel = supabase
+        .channel(`chat:${trainerUUID}:${userId}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'messages', filter: `trainer_id=eq.${trainerUUID}` },
+          (payload) => {
+            const row = payload.new as MessageRow;
+            setMessages(prev => {
+              if (prev.some(m => m.id === row.id)) return prev;
+              return [...prev, mapMessage(row, userId)];
+            });
+            setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
+          },
+        )
+        .subscribe();
+    }
+
+    setup();
+
+    return () => { if (channel) supabase.removeChannel(channel); };
   }, [id, userId]);
 
   async function handleSend() {
     const text = inputText.trim();
     if (!text || !userId) return;
+    const trainerUUID = trainerUUIDRef.current;
     setInputText('');
-    await supabase.from('messages').insert({
-      sender_id:   userId,
-      receiver_id: id,
-      trainer_id:  id,
-      content:     text,
-    });
+    console.log('[chat] inserting message:', { sender_id: userId, receiver_id: trainerUUID, trainer_id: trainerUUID, content: text });
+    const { data, error } = await supabase
+      .from('messages')
+      .insert({
+        sender_id:   userId,
+        receiver_id: trainerUUID,
+        trainer_id:  trainerUUID,
+        content:     text,
+      })
+      .select('id, created_at')
+      .single();
+
+    if (error) { console.error('[chat] send error:', error.message); return; }
+
+    // Append immediately; realtime deduplicates by id if the event arrives later
+    const sent: Message = {
+      id:    data.id,
+      text,
+      isOwn: true,
+      time:  new Date(data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+    };
+    setMessages(prev => prev.some(m => m.id === sent.id) ? prev : [...prev, sent]);
+    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
   }
 
   return (
