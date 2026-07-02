@@ -1,11 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { BadgeCheck, Calendar, CheckCircle, ChevronLeft, ChevronRight, Clock, CreditCard, Info, MapPin, Timer, User, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TRAINERS } from '@/data/trainers';
 import { useTheme } from '@/context/ThemeContext';
+import { supabase } from '@/lib/supabase';
 
 const BLUE = '#208AEF';
 
@@ -29,12 +30,6 @@ interface Booking {
 
 const DAY_SHORT   = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-function relativeDate(offsetDays: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
-  return `${DAY_SHORT[d.getDay()]}, ${d.getDate()} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`;
-}
 
 function formatDate(d: Date): string {
   return `${DAY_SHORT[d.getDay()]}, ${d.getDate()} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`;
@@ -68,38 +63,41 @@ const STATUS_CONFIG: Record<Status, { label: string; color: string; bg: string; 
   cancelled: { label: 'Cancelled', color: '#EF4444', bg: '#FEF2F2', darkBg: '#450A0A' },
 };
 
-const ALL_BOOKINGS: Booking[] = [
-  { id: '1', trainerId: '1', trainerName: 'Mantas Petrauskas',   initials: 'MP', sport: 'Football', emoji: '⚽', date: relativeDate(3),   time: '10:00', location: 'Vingis Park, Vilnius',            status: 'confirmed', price: 35 },
-  { id: '2', trainerId: '2', trainerName: 'Rūta Kazlauskaitė',   initials: 'RK', sport: 'Yoga',     emoji: '🧘', date: relativeDate(7),   time: '09:00', location: 'Studio Zen, Vilnius',              status: 'confirmed', price: 45 },
-  { id: '3', trainerId: '5', trainerName: 'Darius Paulauskas',   initials: 'DP', sport: 'Boxing',   emoji: '🥊', date: relativeDate(14),  time: '18:00', location: 'Fight Club Gym, Klaipėda',         status: 'pending',   price: 40 },
-  { id: '4', trainerId: '2', trainerName: 'Rūta Kazlauskaitė',   initials: 'RK', sport: 'Yoga',     emoji: '🧘', date: relativeDate(-3),  time: '09:00', location: 'Studio Zen, Vilnius',              status: 'completed', price: 45 },
-  { id: '5', trainerId: '1', trainerName: 'Mantas Petrauskas',   initials: 'MP', sport: 'Football', emoji: '⚽', date: relativeDate(-7),  time: '10:00', location: 'Vingis Park, Vilnius',              status: 'completed', price: 35 },
-  { id: '6', trainerId: '4', trainerName: 'Aistė Mikalauskaitė', initials: 'AM', sport: 'Tennis',   emoji: '🎾', date: relativeDate(-14), time: '11:00', location: 'Lazdynai Tennis Courts, Vilnius',   status: 'completed', price: 50 },
-];
-
-const BOOKING_EXTRAS: Record<string, {
+interface ExtrasData {
   sessionType: string;
   duration: string;
   address: string;
   paymentMethod: string;
   verified: boolean;
   rating: number;
-}> = {
-  '1': { sessionType: 'Individual', duration: '60 min', address: 'Čiurlionio g. 29, Vilnius',  paymentMethod: 'Visa •••• 4242',       verified: true,  rating: 4.9 },
-  '2': { sessionType: 'Individual', duration: '60 min', address: 'Gedimino pr. 14, Vilnius',   paymentMethod: 'Visa •••• 4242',       verified: true,  rating: 4.8 },
-  '3': { sessionType: 'Individual', duration: '60 min', address: 'Taikos pr. 3, Klaipėda',     paymentMethod: 'Mastercard •••• 8881', verified: true,  rating: 4.7 },
-  '4': { sessionType: 'Individual', duration: '60 min', address: 'Gedimino pr. 14, Vilnius',   paymentMethod: 'Visa •••• 4242',       verified: true,  rating: 4.8 },
-  '5': { sessionType: 'Individual', duration: '60 min', address: 'Čiurlionio g. 29, Vilnius',  paymentMethod: 'Visa •••• 4242',       verified: true,  rating: 4.9 },
-  '6': { sessionType: 'Individual', duration: '60 min', address: 'Lazdynų g. 5, Vilnius',      paymentMethod: 'Apple Pay',            verified: false, rating: 4.7 },
-};
+}
+
+interface BookingRow {
+  id: string;
+  client_id: string;
+  trainer_id: string;
+  date: string;
+  time_slot: string;
+  status: string;
+  price: number;
+  notes: string | null;
+  trainers: {
+    full_name: string;
+    city: string | null;
+    rating: number | null;
+    is_verified: boolean | null;
+    sports: { name: string; emoji: string } | { name: string; emoji: string }[] | null;
+  } | null;
+}
 
 // ─── Cancel modal ─────────────────────────────────────────────────────────────
 
-function CancelModal({ booking, isDarkMode, onConfirm, onClose }: {
+function CancelModal({ booking, isDarkMode, onConfirm, onClose, confirming }: {
   booking: Booking;
   isDarkMode: boolean;
   onConfirm: () => void;
   onClose: () => void;
+  confirming?: boolean;
 }) {
   const [step, setStep] = useState<1 | 2>(1);
 
@@ -159,8 +157,11 @@ function CancelModal({ booking, isDarkMode, onConfirm, onClose }: {
           <Text style={[styles.cancelRefundReminder, { color: textSub }]}>
             Refund will be processed within 3–5 business days.
           </Text>
-          <TouchableOpacity style={styles.cancelConfirmBtn} onPress={onConfirm} activeOpacity={0.85}>
-            <Text style={styles.modalBtnText}>Yes, Cancel</Text>
+          <TouchableOpacity style={[styles.cancelConfirmBtn, confirming && { opacity: 0.6 }]} onPress={onConfirm} activeOpacity={0.85} disabled={confirming}>
+            {confirming
+              ? <ActivityIndicator size="small" color="#FFFFFF" />
+              : <Text style={styles.modalBtnText}>Yes, Cancel</Text>
+            }
           </TouchableOpacity>
           <TouchableOpacity style={[styles.keepBookingBtn, { borderColor: divider }]} onPress={() => setStep(1)} activeOpacity={0.7}>
             <Text style={[styles.keepBookingBtnText, { color: textColor }]}>Go Back</Text>
@@ -303,8 +304,62 @@ export default function BookingDetailScreen() {
         price:       Number(params.price) || 0,
       };
     }
-    return ALL_BOOKINGS.find(b => b.id === id);
+    return undefined;
   });
+  const [loading, setLoading]         = useState(id !== 'new');
+  const [error, setError]             = useState<string | null>(null);
+  const [fetchedExtras, setFetchedExtras] = useState<ExtrasData | null>(null);
+  const [cancelling, setCancelling]   = useState(false);
+
+  useEffect(() => {
+    if (id === 'new') return;
+    async function fetchBooking() {
+      setLoading(true);
+      setError(null);
+      const { data, error: err } = await supabase
+        .from('bookings')
+        .select('id, client_id, trainer_id, date, time_slot, status, price, notes, trainers(full_name, city, rating, is_verified, sports(name, emoji))')
+        .eq('id', id)
+        .single();
+      if (err) {
+        setError(err.message);
+      } else if (data) {
+        const row = data as unknown as BookingRow;
+        const trainer = row.trainers;
+        const rawSport = trainer?.sports ?? null;
+        const sport = rawSport
+          ? (Array.isArray(rawSport) ? (rawSport[0] ?? { name: '', emoji: '' }) : rawSport)
+          : { name: '', emoji: '' };
+        const nameWords = (trainer?.full_name ?? '').split(' ').filter(Boolean);
+        const inits = nameWords.map(w => w[0].toUpperCase()).slice(0, 2).join('');
+        const [year, month, day] = row.date.split('-').map(Number);
+        const dateObj = new Date(year, month - 1, day);
+        setBooking({
+          id:          row.id,
+          trainerId:   row.trainer_id,
+          trainerName: trainer?.full_name ?? '',
+          initials:    inits,
+          sport:       sport.name,
+          emoji:       sport.emoji,
+          date:        formatDate(dateObj),
+          time:        row.time_slot,
+          location:    trainer?.city ?? '',
+          status:      row.status as Status,
+          price:       row.price,
+        });
+        setFetchedExtras({
+          sessionType:   'Individual',
+          duration:      '60 min',
+          address:       trainer?.city ?? '',
+          paymentMethod: 'Card',
+          verified:      trainer?.is_verified ?? false,
+          rating:        trainer?.rating ?? 0,
+        });
+      }
+      setLoading(false);
+    }
+    fetchBooking();
+  }, [id]);
 
   const [showCancel, setShowCancel]               = useState(false);
   const [showReschedule, setShowReschedule]       = useState(false);
@@ -330,7 +385,7 @@ export default function BookingDetailScreen() {
         rating:        t?.rating   ?? 4.8,
       };
     }
-    return BOOKING_EXTRAS[booking.id] ?? null;
+    return fetchedExtras;
   })();
 
   const bg          = isDarkMode ? '#111827' : '#F3F4F6';
@@ -341,7 +396,7 @@ export default function BookingDetailScreen() {
   const textSub     = isDarkMode ? '#9CA3AF' : '#6B7280';
   const divColor    = isDarkMode ? '#374151' : '#F3F4F6';
 
-  if (!booking) {
+  if (loading || (!booking && !error)) {
     return (
       <View style={[styles.container, { backgroundColor: bg }]}>
         <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: headerBg, borderBottomColor: borderColor }]}>
@@ -352,7 +407,24 @@ export default function BookingDetailScreen() {
           <View style={styles.backBtn} />
         </View>
         <View style={styles.notFound}>
-          <Text style={[styles.notFoundText, { color: textSub }]}>Booking not found.</Text>
+          <ActivityIndicator size="large" color={BLUE} />
+        </View>
+      </View>
+    );
+  }
+
+  if (error || !booking) {
+    return (
+      <View style={[styles.container, { backgroundColor: bg }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: headerBg, borderBottomColor: borderColor }]}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+            <ChevronLeft size={24} color={textPrimary} strokeWidth={2} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: textPrimary }]}>Booking Details</Text>
+          <View style={styles.backBtn} />
+        </View>
+        <View style={styles.notFound}>
+          <Text style={[styles.notFoundText, { color: textSub }]}>{error ?? 'Booking not found.'}</Text>
         </View>
       </View>
     );
@@ -364,7 +436,12 @@ export default function BookingDetailScreen() {
   const serviceFee = Math.round(booking.price * 0.1 * 100) / 100;
   const total      = booking.price + serviceFee;
 
-  function handleCancel() {
+  async function handleCancel() {
+    if (id !== 'new') {
+      setCancelling(true);
+      await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', id);
+      setCancelling(false);
+    }
     setBooking(prev => prev ? { ...prev, status: 'cancelled' } : prev);
     setShowCancel(false);
   }
@@ -589,6 +666,7 @@ export default function BookingDetailScreen() {
           isDarkMode={isDarkMode}
           onConfirm={handleCancel}
           onClose={() => setShowCancel(false)}
+          confirming={cancelling}
         />
       )}
 
