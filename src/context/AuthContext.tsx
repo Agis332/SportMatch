@@ -27,14 +27,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setCurrentUser(session?.user ?? null);
+    console.log('[auth] loading: true — fetching session');
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) console.error('[auth] getSession error:', error.message);
+      const user = session?.user ?? null;
+      console.log('[auth] session resolved:', user ? `user ${user.id}` : 'no session');
+      setCurrentUser(user);
       setLoading(false);
+      console.log('[auth] loading: false');
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         const user = session?.user ?? null;
+        console.log(`[auth] onAuthStateChange: ${event}`, user ? `user ${user.id}` : 'no user');
         setCurrentUser(user);
 
         if (event === 'SIGNED_IN' && user) {
