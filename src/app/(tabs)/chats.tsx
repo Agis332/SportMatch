@@ -295,7 +295,7 @@ export default function ChatsScreen() {
     setLoading(true);
     supabase
       .from('messages')
-      .select('*, trainers(id, full_name, is_verified, sports(name, emoji))')
+      .select('*, trainers!messages_trainer_id_fkey(id, full_name, is_verified, sports(name, emoji))')
       .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
       .order('created_at', { ascending: false })
       .then(({ data, error }) => {
